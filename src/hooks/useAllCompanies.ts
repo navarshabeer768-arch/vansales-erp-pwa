@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { createEphemeralAuthClient } from '@/lib/ephemeralAuthClient';
 
 export interface CompanyRow {
   id: string;
@@ -56,7 +57,48 @@ export function useAllCompanies() {
     return { error: error?.message ?? null };
   }, [load]);
 
-  return { companies, loading, reload: load, approve, suspend };
+  const createCompany = useCallback(async (params: {
+    companyName: string; companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string;
+    adminFullName: string; adminEmail: string; adminPhone?: string; tempPassword: string;
+  }) => {
+    // Ephemeral client: signing up here must never touch the platform admin's
+    // own session (the main `supabase` client, which persists sessions).
+    const ephemeral = createEphemeralAuthClient();
+    const { data: signUpData, error: signUpError } = await ephemeral.auth.signUp({
+      email: params.adminEmail, password: params.tempPassword,
+    });
+    if (signUpError || !signUpData.user) {
+      return { error: signUpError?.message ?? 'Failed to create the login for this company' };
+    }
+
+    const slug = `${params.companyName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Date.now().toString(36)}`;
+
+    const { data: companyId, error: bootstrapError } = await supabase.rpc('bootstrap_company', {
+      p_company_name: params.companyName,
+      p_slug: slug,
+      p_admin_user_id: signUpData.user.id,
+      p_admin_full_name: params.adminFullName,
+      p_admin_email: params.adminEmail,
+      p_company_phone: params.companyPhone ?? null,
+      p_company_address: params.companyAddress ?? null,
+      p_currency: params.currency ?? 'QAR',
+      p_tax_number: params.taxNumber ?? null,
+      p_admin_phone: params.adminPhone ?? null,
+    });
+    if (bootstrapError || !companyId) {
+      return { error: bootstrapError?.message ?? 'Failed to create the company' };
+    }
+
+    // Platform admins can approve their own creations immediately — no need
+    // for the pending-approval step self-service signups go through.
+    const { error: approveError } = await supabase.rpc('approve_company', { p_company_id: companyId });
+    if (approveError) return { error: approveError.message };
+
+    await load();
+    return { error: null };
+  }, [load]);
+
+  return { companies, loading, reload: load, approve, suspend, createCompany };
 }
 
 export function useCompanyDetail(companyId: string | null) {

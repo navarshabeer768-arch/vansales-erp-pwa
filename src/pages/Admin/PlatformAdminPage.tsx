@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
-import { ShieldCheck, Check, Ban, Eye } from 'lucide-react';
+import { ShieldCheck, Check, Ban, Eye, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllCompanies, CompanyRow } from '@/hooks/useAllCompanies';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/contexts/ToastContext';
+import { NewCompanyModal } from './NewCompanyModal';
 
 export function PlatformAdminPage() {
   const { isPlatformAdmin, loading: authLoading } = useAuth();
-  const { companies, loading, approve, suspend } = useAllCompanies();
+  const { companies, loading, approve, suspend, reload } = useAllCompanies();
   const { push } = useToast();
   const [toApprove, setToApprove] = useState<CompanyRow | null>(null);
   const [toSuspend, setToSuspend] = useState<CompanyRow | null>(null);
+  const [newCompanyOpen, setNewCompanyOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   if (!authLoading && !isPlatformAdmin) return <Navigate to="/" replace />;
@@ -80,6 +82,9 @@ export function PlatformAdminPage() {
             {pendingCount > 0 ? `${pendingCount} registration${pendingCount === 1 ? '' : 's'} awaiting approval` : 'All companies reviewed'}
           </p>
         </div>
+        <button className="btn-primary ml-auto" onClick={() => setNewCompanyOpen(true)}>
+          <Plus size={16} /> New company
+        </button>
       </div>
 
       <DataTable
@@ -106,6 +111,8 @@ export function PlatformAdminPage() {
         onConfirm={handleSuspend}
         onCancel={() => setToSuspend(null)}
       />
+
+      <NewCompanyModal open={newCompanyOpen} onClose={() => setNewCompanyOpen(false)} onCreated={reload} />
     </div>
   );
 }

@@ -63,11 +63,11 @@ React + TypeScript + Tailwind + Supabase.
   account together in one step, with a graceful "check your email"
   state if email confirmation is required by your Supabase Auth
   settings.
-- **New companies require your approval.** Self-registration creates
-  the company and admin account, but the company stays inactive until
-  you approve it from `/platform-admin` — a page only reachable by a
-  manually managed `platform_admins` list (separate from any tenant's
-  roles). See "Make yourself the platform admin" below.
+- **Self-service registration is closed.** `/register` only works to
+  bootstrap your own first account — the moment any platform admin
+  exists, it closes to everyone else (enforced server-side, not just a
+  hidden link). Every company after that is created by you, from
+  `/platform-admin`, instantly active.
 - **Company drill-down** — click any company in `/platform-admin` to see
   its full profile, change its subscription plan, and view its branches
   (warehouses) and staff — the same Company → Branches → Staff oversight
@@ -108,7 +108,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0013). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0014). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 ### 2. Configure environment
@@ -126,16 +126,20 @@ npm run build     # production build to dist/
 npm run preview   # preview the production build
 ```
 
-### 4. Make yourself the platform admin (do this once)
+### 4. Become the platform admin (do this once, then registration closes)
 
-New self-service registrations now start **pending** — a company can sign
-up, but nobody in it can use the app until you approve it from
-`/platform-admin`. That page is only reachable by a **platform admin**: a
-small, manually managed list (`platform_admins` table), completely
-separate from any tenant's `company_admin` role.
+Self-service registration only exists to bootstrap **your own** first
+account — the moment a platform admin exists, `/register` closes itself
+to everyone else (checked server-side via `platform_has_admin()`, not
+just hidden in the UI). From then on, **every new company is created by
+you**, from `/platform-admin`, instantly active — no public sign-up path
+at all.
 
-To become the first platform admin:
-1. Register your own company at `/register` as normal.
+One-time setup:
+1. Visit `/register` directly (there's no link to it anywhere in the UI —
+   go straight to the URL) and create your own company + account. Use
+   this as your "platform owner" workspace, or your first real client —
+   either works.
 2. In the Supabase dashboard, go to **Authentication → Users** and copy
    your user's UUID.
 3. In the SQL Editor, run:
@@ -143,18 +147,27 @@ To become the first platform admin:
    insert into platform_admins (user_id, note)
    values ('<your-user-uuid>', 'platform owner');
    ```
-4. Visit `/platform-admin` (not linked in the sidebar — bookmark it) to
-   approve your own company, and any future signups.
+4. Visit `/platform-admin` (bookmark it — exact link:
+   `https://navarshabeer768-arch.github.io/vansales-erp-pwa/#/platform-admin`
+   once deployed, or `http://localhost:5173/platform-admin` in dev).
+   `/register` is now closed for everyone but you'll never need it again.
+
+From here on, click **"New company"** inside `/platform-admin` to create
+every future tenant: it creates their login, bootstraps the company, and
+auto-approves it in one step, then shows you a one-time password to hand
+off. That signup happens through a throwaway Supabase client with no
+session persistence, so it never touches your own signed-in session.
 
 Being a platform admin bypasses the pending-approval screen for your own
 account so you're never locked out of `/platform-admin`, but it does
 **not** grant tenant-level permissions inside any company's data — those
 still come from the roles/permissions system.
 
-### 5. Create your first company (once approved)
-Go to `/register` — this calls `bootstrap_company()`, which creates the
-tenant row, clones the 10 system roles with their default permission
-grants, and makes you `company_admin`. From there:
+### 5. Setting up a company's data (yours or any client's)
+
+Once a company exists (via your one-time `/register` bootstrap, or via
+"New company" in `/platform-admin` for every company after that) and is
+active, log in as that company and:
 
 1. Inventory → Catalog settings: add at least one **Unit** (e.g. Piece/PC).
 2. Warehouse → New warehouse.

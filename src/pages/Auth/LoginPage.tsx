@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Truck, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -63,13 +63,6 @@ export function LoginPage() {
             Sign in
           </button>
         </form>
-
-        <p className="mt-4 text-center text-sm text-slate-500">
-          New distributor?{' '}
-          <Link to="/register" className="font-medium text-brand-700 hover:underline">
-            Create a company account
-          </Link>
-        </p>
       </div>
     </div>
   );

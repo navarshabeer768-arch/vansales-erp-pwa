@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { Truck, Loader2, Building2, User, CheckCircle2 } from 'lucide-react';
+import { Truck, Loader2, Building2, User, CheckCircle2, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -35,11 +35,34 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
+  const [registrationClosed, setRegistrationClosed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.rpc('platform_has_admin').then(({ data }) => setRegistrationClosed(data === true));
+  }, []);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   if (!loading && isAuthenticated) return <Navigate to="/" replace />;
+
+  if (registrationClosed === null) return null;
+
+  if (registrationClosed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-surface px-4 dark:bg-surface-dark">
+        <div className="card w-full max-w-sm p-6 text-center">
+          <Lock className="mx-auto mb-3 text-slate-400" size={36} />
+          <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Registration is closed</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            New companies are set up directly by the platform team. If you're expecting access,
+            reach out to whoever invited you.
+          </p>
+          <Link to="/login" className="btn-primary mt-5 inline-flex">Go to sign in</Link>
+        </div>
+      </div>
+    );
+  }
 
   if (needsEmailConfirm) {
     return (
