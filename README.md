@@ -96,24 +96,23 @@ React + TypeScript + Tailwind + Supabase.
   - **Staff Accounts**: every staff member across every company, for
     oversight (read-only — editing staff still happens inside each
     company).
-- **Store ID**: every company gets a short, unique reference ID (e.g.
-  `VS-3F9A2B`) generated automatically at creation — shown in the
-  sidebar, Company Settings, the Platform Admin console, and the "New
-  company" handoff screen. Staff still sign in with their own
-  individual **username** (not email — see below), which preserves
-  per-staff accountability for sales, approvals, and audit trails
-  across the roles system; the Store ID is a reference/support
-  identifier alongside that, not a second login mechanism.
-- **Username-based login.** Staff sign in with a Username + Password,
-  not an email address — the login screen never shows or asks for
-  email. Underneath, Supabase Auth (the only thing that makes real
-  per-company, per-user data isolation enforceable — RLS checks a
-  verified session, not anything the client claims) still handles the
-  actual authentication; `resolve_username_email()` transparently looks
-  up the matching email so the client can sign in without the user ever
-  seeing it. Email is still collected at signup for account recovery
-  and Supabase Auth's own requirements, just never used as the login
-  identifier.
+- **Store ID**: every company gets a short, unique ID (e.g. `VS-3F9A2B`)
+  generated automatically at creation — shown in the sidebar, Company
+  Settings, the Platform Admin console, and the "New company" handoff
+  screen. It's also one of the three fields used at login (see below).
+- **Store ID + Username login, no email anywhere.** Every company gets a
+  unique Store ID (e.g. `VS-3F9A2B`); staff sign in with **Store ID +
+  Username + Password**. Usernames only need to be unique *within* a
+  store, not across the platform, so two different companies can both
+  have a "manager" login. Registration and the Platform Admin's "New
+  company" form never ask for an email at all — Supabase Auth still
+  needs an email-shaped string internally (that's what actually enforces
+  per-company data isolation via RLS), so the client generates an
+  invisible, unique placeholder at signup time that nobody ever sees.
+  **Important:** since there's no real inbox behind that placeholder,
+  your Supabase project must have "Confirm email" turned OFF
+  (Authentication → Providers → Email) — otherwise new accounts get
+  stuck waiting on a confirmation email that can never arrive.
 
 Every other module (Payments, Reports, HR, GPS Tracking) has a route
 stubbed in `App.tsx` so navigation never breaks. Payments is
@@ -149,8 +148,15 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0018). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0019). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
+
+**Required:** in Supabase → Authentication → Providers → Email, turn
+**off** "Confirm email". This app never collects a real email address
+(login is Store ID + Username + Password) — Supabase Auth is given an
+invisible placeholder address under the hood, and if email confirmation
+is on, every new account will get stuck forever waiting for a
+confirmation link that can never arrive at that address.
 
 ### 2. Configure environment
 ```bash
@@ -186,9 +192,11 @@ One-time setup:
 1. Visit `/register` directly (there's no link to it anywhere in the UI —
    go straight to the URL) and create your own company + account. Use
    this as your "platform owner" workspace, or your first real client —
-   either works.
+   either works. **Note the Store ID and Username you set** — you'll
+   need both in step 4.
 2. In the Supabase dashboard, go to **Authentication → Users** and copy
-   your user's UUID.
+   your user's UUID. (There'll be one user with an `@accounts.vansales.internal`
+   placeholder address — that's it.)
 3. In the SQL Editor, run:
    ```sql
    insert into platform_admins (user_id, note)
@@ -197,9 +205,11 @@ One-time setup:
 4. Sign in at the **platform admin login** — exact link:
    `https://navarshabeer768-arch.github.io/vansales-erp-pwa/#/platform-admin/login`
    (or `http://localhost:5173/platform-admin/login` in dev) — using the
-   same email/password from step 1. Bookmark this; it's never linked
-   from anywhere in the tenant app. `/register` is now closed for
-   everyone but you'll never need it again.
+   **Store ID + Username + Password** from step 1 (same three fields as
+   any company login, nothing platform-specific about the credentials
+   themselves). Bookmark this; it's never linked from anywhere in the
+   tenant app. `/register` is now closed for everyone but you'll never
+   need it again.
 
 From here on, click **"New company"** inside `/platform-admin` to create
 every future tenant: it creates their login, bootstraps the company, and

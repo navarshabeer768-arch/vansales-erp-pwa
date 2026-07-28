@@ -77,7 +77,7 @@ export function CompanySettingsPage() {
         <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800">
           <span className="text-slate-500">Store ID: </span>
           <strong>{company.store_id}</strong>
-          <span className="ml-2 text-xs text-slate-400">(reference ID for support — not editable)</span>
+          <span className="ml-2 text-xs text-slate-400">(used with your username to sign in — not editable)</span>
         </div>
 
         {!canEdit && (

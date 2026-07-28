@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { createEphemeralAuthClient } from '@/lib/ephemeralAuthClient';
+import { generateSyntheticEmail } from '@/lib/syntheticEmail';
 
 export interface CompanyRow {
   id: string;
@@ -60,33 +61,22 @@ export function useAllCompanies() {
 
   const createCompany = useCallback(async (params: {
     companyName: string; companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string;
-    adminFullName: string; adminUsername: string; adminEmail: string; adminPhone?: string; tempPassword: string;
+    adminFullName: string; adminUsername: string; adminPhone?: string; tempPassword: string;
   }) => {
     try {
-      const { data: existingEmail } = await supabase.rpc('resolve_username_email', { p_username: params.adminUsername });
-      if (existingEmail) {
-        return { error: `Username "${params.adminUsername}" is already taken. Choose a different one.` };
-      }
+      const syntheticEmail = generateSyntheticEmail(params.adminUsername);
 
       // Ephemeral client: signing up here must never touch the platform admin's
       // own session (the main `supabase` client, which persists sessions).
       const ephemeral = createEphemeralAuthClient();
       const { data: signUpData, error: signUpError } = await ephemeral.auth.signUp({
-        email: params.adminEmail, password: params.tempPassword,
+        email: syntheticEmail, password: params.tempPassword,
       });
       if (signUpError) {
         return { error: signUpError.message };
       }
       if (!signUpData.user) {
         return { error: 'Failed to create the login for this company.' };
-      }
-      // When "Confirm email" is on, Supabase silently returns the *existing*
-      // user (with an empty identities array) instead of erroring, so it looks
-      // like signup succeeded — but no new auth user was actually created, and
-      // that person may already run a different company. Catch it here rather
-      // than letting it fail later on a confusing duplicate-key error.
-      if (Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
-        return { error: `${params.adminEmail} already has an account. Use a different email for this company's admin login.` };
       }
 
       const slug = `${params.companyName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Date.now().toString(36)}`;
@@ -96,7 +86,7 @@ export function useAllCompanies() {
         p_slug: slug,
         p_admin_user_id: signUpData.user.id,
         p_admin_full_name: params.adminFullName,
-        p_admin_email: params.adminEmail,
+        p_admin_email: syntheticEmail,
         p_admin_username: params.adminUsername,
         p_company_phone: params.companyPhone ?? null,
         p_company_address: params.companyAddress ?? null,
@@ -106,7 +96,7 @@ export function useAllCompanies() {
       });
       if (bootstrapError || !companyId) {
         if (bootstrapError?.code === '23505') {
-          return { error: `That username or email is already taken elsewhere in the system. Use different ones.` };
+          return { error: `Username "${params.adminUsername}" is already taken. Choose a different one.` };
         }
         return { error: bootstrapError?.message ?? 'Failed to create the company.' };
       }

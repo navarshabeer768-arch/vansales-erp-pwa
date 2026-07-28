@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
+import { generateSyntheticEmail } from '@/lib/syntheticEmail';
 import type { AppUser, Company, RoleCode } from '@/types/database';
 
 interface AuthState {
@@ -13,9 +14,9 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  signIn: (username: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (storeId: string, username: string, password: string) => Promise<{ error: string | null }>;
   signUpCompany: (params: {
-    companyName: string; slug: string; fullName: string; username: string; email: string; password: string;
+    companyName: string; slug: string; fullName: string; username: string; password: string;
     companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string; adminPhone?: string;
   }) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -97,40 +98,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [refresh, loadProfile]);
 
-  const signIn = useCallback(async (username: string, password: string) => {
-    const { data: email, error: resolveError } = await supabase.rpc('resolve_username_email', { p_username: username });
+  const signIn = useCallback(async (storeId: string, username: string, password: string) => {
+    const { data: email, error: resolveError } = await supabase.rpc('resolve_username_email', {
+      p_store_id: storeId, p_username: username,
+    });
     if (resolveError || !email) {
-      return { error: 'Invalid username or password.' };
+      return { error: 'Invalid Store ID, username, or password.' };
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      // Never reveal whether the username existed — same generic message either way.
-      return { error: 'Invalid username or password.' };
+      // Never reveal whether the store/username existed — same generic message either way.
+      return { error: 'Invalid Store ID, username, or password.' };
     }
     return { error: null };
   }, []);
 
   const signUpCompany = useCallback(
     async (params: {
-      companyName: string; slug: string; fullName: string; username: string; email: string; password: string;
+      companyName: string; slug: string; fullName: string; username: string; password: string;
       companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string; adminPhone?: string;
     }) => {
-      const { companyName, slug, fullName, username, email, password, companyPhone, companyAddress, currency, taxNumber, adminPhone } = params;
+      const { companyName, slug, fullName, username, password, companyPhone, companyAddress, currency, taxNumber, adminPhone } = params;
+      const syntheticEmail = generateSyntheticEmail(username);
 
-      const { data: existingEmail } = await supabase.rpc('resolve_username_email', { p_username: username });
-      if (existingEmail) {
-        return { error: `Username "${username}" is already taken. Choose a different one.` };
-      }
-
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email: syntheticEmail, password });
       if (signUpError) {
         return { error: signUpError.message };
       }
       if (!signUpData.user) {
         return { error: 'Sign up failed' };
-      }
-      if (Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
-        return { error: `${email} already has an account. Sign in instead, or use a different email.` };
       }
 
       const { error: bootstrapError } = await supabase.rpc('bootstrap_company', {
@@ -138,7 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         p_slug: slug,
         p_admin_user_id: signUpData.user.id,
         p_admin_full_name: fullName,
-        p_admin_email: email,
+        p_admin_email: syntheticEmail,
         p_admin_username: username,
         p_company_phone: companyPhone ?? null,
         p_company_address: companyAddress ?? null,
@@ -149,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (bootstrapError) {
         if (bootstrapError.code === '23505') {
-          return { error: `That username or email is already taken. Try different ones.` };
+          return { error: `Username "${username}" is already taken. Choose a different one.` };
         }
         return { error: bootstrapError.message };
       }

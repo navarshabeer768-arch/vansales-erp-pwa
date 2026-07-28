@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export function LoginPage() {
   const { signIn, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  const [storeId, setStoreId] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -16,12 +17,12 @@ export function LoginPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!username || !password) {
-      setError('Enter both username and password.');
+    if (!storeId || !username || !password) {
+      setError('Enter your Store ID, username, and password.');
       return;
     }
     setSubmitting(true);
-    const { error: signInError } = await signIn(username, password);
+    const { error: signInError } = await signIn(storeId, username, password);
     setSubmitting(false);
     if (signInError) setError(signInError);
     else navigate('/');
@@ -45,10 +46,17 @@ export function LoginPage() {
             </div>
           )}
           <div>
+            <label className="label" htmlFor="storeId">Store ID</label>
+            <input
+              id="storeId" type="text" className="input" autoComplete="organization" placeholder="VS-XXXXXX"
+              value={storeId} onChange={(e) => setStoreId(e.target.value)} required autoFocus
+            />
+          </div>
+          <div>
             <label className="label" htmlFor="username">Username</label>
             <input
               id="username" type="text" className="input" autoComplete="username"
-              value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus
+              value={username} onChange={(e) => setUsername(e.target.value)} required
             />
           </div>
           <div>

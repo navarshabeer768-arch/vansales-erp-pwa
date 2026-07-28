@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import { Truck, Loader2, Building2, User, CheckCircle2, Lock } from 'lucide-react';
+import { Truck, Loader2, Building2, User, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -19,14 +19,13 @@ interface FormState {
   fullName: string;
   username: string;
   adminPhone: string;
-  email: string;
   password: string;
   confirmPassword: string;
 }
 
 const initialForm: FormState = {
   companyName: '', companyPhone: '', companyAddress: '', currency: 'QAR', taxNumber: '',
-  fullName: '', username: '', adminPhone: '', email: '', password: '', confirmPassword: '',
+  fullName: '', username: '', adminPhone: '', password: '', confirmPassword: '',
 };
 
 export function RegisterPage() {
@@ -35,7 +34,6 @@ export function RegisterPage() {
   const [form, setForm] = useState<FormState>(initialForm);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [needsEmailConfirm, setNeedsEmailConfirm] = useState(false);
   const [registrationClosed, setRegistrationClosed] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -65,28 +63,12 @@ export function RegisterPage() {
     );
   }
 
-  if (needsEmailConfirm) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-surface px-4 dark:bg-surface-dark">
-        <div className="card w-full max-w-sm p-6 text-center">
-          <CheckCircle2 className="mx-auto mb-3 text-emerald-600" size={40} />
-          <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Check your email</h1>
-          <p className="mt-2 text-sm text-slate-500">
-            We've created <strong>{form.companyName}</strong> and sent a confirmation link to{' '}
-            <strong>{form.email}</strong>. Confirm it, then sign in.
-          </p>
-          <Link to="/login" className="btn-primary mt-5 inline-flex">Go to sign in</Link>
-        </div>
-      </div>
-    );
-  }
-
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!form.companyName.trim() || !form.fullName.trim() || !form.username.trim() || !form.email.trim()) {
-      setError('Company name, your name, username, and email are required.');
+    if (!form.companyName.trim() || !form.fullName.trim() || !form.username.trim()) {
+      setError('Company name, your name, and a username are required.');
       return;
     }
     if (!/^[a-zA-Z0-9_]{3,30}$/.test(form.username.trim())) {
@@ -108,7 +90,6 @@ export function RegisterPage() {
       slug: `${slugify(form.companyName)}-${Date.now().toString(36)}`,
       fullName: form.fullName.trim(),
       username: form.username.trim(),
-      email: form.email.trim(),
       password: form.password,
       companyPhone: form.companyPhone.trim() || undefined,
       companyAddress: form.companyAddress.trim() || undefined,
@@ -120,12 +101,17 @@ export function RegisterPage() {
 
     if (signUpError) { setError(signUpError); return; }
 
-    // If email confirmation is required, signUp won't return an active session —
-    // the company/user rows are created either way, but we can't drop them
-    // straight into the app until they confirm.
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session) {
-      setNeedsEmailConfirm(true);
+      // This app never collects a real email, so if no session comes back it
+      // means Supabase Auth's "Confirm email" setting is turned on and is
+      // waiting on a confirmation link that can never arrive (there's no real
+      // inbox behind the internal placeholder address). Turn that setting
+      // off in Supabase → Authentication → Providers → Email.
+      setError(
+        'Account created, but sign-in requires email confirmation on your Supabase project. ' +
+        'Turn off "Confirm email" under Authentication → Providers → Email, then sign in with your new username.'
+      );
       return;
     }
     navigate('/');
@@ -205,12 +191,6 @@ export function RegisterPage() {
               <label className="label" htmlFor="adminPhone">Your phone</label>
               <input id="adminPhone" className="input" value={form.adminPhone}
                 onChange={(e) => set('adminPhone', e.target.value)} />
-            </div>
-            <div>
-              <label className="label" htmlFor="email">Email *</label>
-              <input id="email" type="email" className="input" value={form.email}
-                onChange={(e) => set('email', e.target.value)} required />
-              <p className="mt-1 text-xs text-slate-400">For account recovery — you'll log in with your username, not this.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>

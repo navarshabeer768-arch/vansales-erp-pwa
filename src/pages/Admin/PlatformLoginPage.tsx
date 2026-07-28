@@ -7,7 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 export function PlatformLoginPage() {
   const { isPlatformAdmin, loading } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [storeId, setStoreId] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -17,13 +18,25 @@ export function PlatformLoginPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!email || !password) { setError('Enter both email and password.'); return; }
+    if (!storeId || !username || !password) {
+      setError('Enter your Store ID, username, and password.');
+      return;
+    }
 
     setSubmitting(true);
+    const { data: email, error: resolveError } = await supabase.rpc('resolve_username_email', {
+      p_store_id: storeId, p_username: username,
+    });
+    if (resolveError || !email) {
+      setSubmitting(false);
+      setError('Invalid Store ID, username, or password.');
+      return;
+    }
+
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
       setSubmitting(false);
-      setError(signInError.message);
+      setError('Invalid Store ID, username, or password.');
       return;
     }
 
@@ -68,10 +81,17 @@ export function PlatformLoginPage() {
           )}
 
           <div>
-            <label className="label" htmlFor="pa-email">Email</label>
+            <label className="label" htmlFor="pa-store">Store ID</label>
             <input
-              id="pa-email" type="email" className="input" autoComplete="email"
-              value={email} onChange={(e) => setEmail(e.target.value)} required
+              id="pa-store" type="text" className="input" placeholder="VS-XXXXXX"
+              value={storeId} onChange={(e) => setStoreId(e.target.value)} required autoFocus
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="pa-username">Username</label>
+            <input
+              id="pa-username" type="text" className="input" autoComplete="username"
+              value={username} onChange={(e) => setUsername(e.target.value)} required
             />
           </div>
           <div>

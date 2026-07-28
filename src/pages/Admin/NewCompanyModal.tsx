@@ -15,12 +15,12 @@ function generatePassword() {
 
 interface FormState {
   companyName: string; companyPhone: string; companyAddress: string; currency: string; taxNumber: string;
-  adminFullName: string; adminUsername: string; adminEmail: string; adminPhone: string; tempPassword: string;
+  adminFullName: string; adminUsername: string; adminPhone: string; tempPassword: string;
 }
 
 const initialForm: FormState = {
   companyName: '', companyPhone: '', companyAddress: '', currency: 'QAR', taxNumber: '',
-  adminFullName: '', adminUsername: '', adminEmail: '', adminPhone: '', tempPassword: generatePassword(),
+  adminFullName: '', adminUsername: '', adminPhone: '', tempPassword: generatePassword(),
 };
 
 export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
@@ -28,7 +28,7 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
   const { push } = useToast();
   const [form, setForm] = useState<FormState>(initialForm);
   const [submitting, setSubmitting] = useState(false);
-  const [created, setCreated] = useState<{ username: string; email: string; password: string; companyName: string; storeId?: string } | null>(null);
+  const [created, setCreated] = useState<{ username: string; password: string; companyName: string; storeId?: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
@@ -36,8 +36,8 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
   const reset = () => { setForm({ ...initialForm, tempPassword: generatePassword() }); setCreated(null); };
 
   const submit = async () => {
-    if (!form.companyName.trim() || !form.adminFullName.trim() || !form.adminUsername.trim() || !form.adminEmail.trim() || form.tempPassword.length < 8) {
-      push('error', 'Company name, admin name, username, email, and an 8+ character password are required.');
+    if (!form.companyName.trim() || !form.adminFullName.trim() || !form.adminUsername.trim() || form.tempPassword.length < 8) {
+      push('error', 'Company name, admin name, username, and an 8+ character password are required.');
       return;
     }
     if (!/^[a-zA-Z0-9_]{3,30}$/.test(form.adminUsername.trim())) {
@@ -49,13 +49,13 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
       companyName: form.companyName.trim(), companyPhone: form.companyPhone.trim() || undefined,
       companyAddress: form.companyAddress.trim() || undefined, currency: form.currency,
       taxNumber: form.taxNumber.trim() || undefined, adminFullName: form.adminFullName.trim(),
-      adminUsername: form.adminUsername.trim(), adminEmail: form.adminEmail.trim(),
+      adminUsername: form.adminUsername.trim(),
       adminPhone: form.adminPhone.trim() || undefined, tempPassword: form.tempPassword,
     });
     setSubmitting(false);
     if (result.error) { push('error', result.error); return; }
     setCreated({
-      username: form.adminUsername.trim(), email: form.adminEmail.trim(), password: form.tempPassword,
+      username: form.adminUsername.trim(), password: form.tempPassword,
       companyName: form.companyName.trim(), storeId: result.storeId,
     });
     onCreated();
@@ -140,11 +140,6 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
           <div>
             <label className="label">Phone</label>
             <input className="input" value={form.adminPhone} onChange={(e) => set('adminPhone', e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Email *</label>
-            <input type="email" className="input" value={form.adminEmail} onChange={(e) => set('adminEmail', e.target.value)} />
-            <p className="mt-1 text-xs text-slate-400">For account recovery — they'll log in with the username above, not this.</p>
           </div>
           <div>
             <label className="label">Temporary password *</label>
