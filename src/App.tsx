@@ -9,6 +9,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { LoginPage } from '@/pages/Auth/LoginPage';
 import { RegisterPage } from '@/pages/Auth/RegisterPage';
 import { PlatformAdminPage } from '@/pages/Admin/PlatformAdminPage';
+import { CompanyDetailPage } from '@/pages/Admin/CompanyDetailPage';
 import { DashboardPage } from '@/pages/Dashboard/DashboardPage';
 import { InventoryHomePage } from '@/pages/Inventory/InventoryHomePage';
 import { ProductsPage } from '@/pages/Inventory/ProductsPage';
@@ -46,6 +47,7 @@ export default function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/platform-admin" element={<PlatformAdminPage />} />
+          <Route path="/platform-admin/companies/:companyId" element={<CompanyDetailPage />} />
 
           <Route element={<ApprovalGate />}>
             <Route element={<DashboardLayout />}>

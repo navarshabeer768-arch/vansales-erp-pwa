@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { ShieldCheck, Check, Ban } from 'lucide-react';
+import { Navigate, Link } from 'react-router-dom';
+import { ShieldCheck, Check, Ban, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllCompanies, CompanyRow } from '@/hooks/useAllCompanies';
 import { DataTable, Column } from '@/components/ui/DataTable';
@@ -46,6 +46,7 @@ export function PlatformAdminPage() {
       <div><p className="font-medium">{r.name}</p><p className="text-xs text-slate-500">{r.slug}</p></div>
     ) },
     { key: 'phone', header: 'Phone', render: (r) => r.phone ?? '—' },
+    { key: 'plan', header: 'Plan', render: (r) => <span className="capitalize">{r.subscription_plan}</span> },
     { key: 'currency', header: 'Currency' },
     { key: 'status', header: 'Status', render: statusBadge },
     { key: 'created_at', header: 'Registered', render: (r) => new Date(r.created_at).toLocaleString() },
@@ -53,6 +54,7 @@ export function PlatformAdminPage() {
       key: 'actions', header: '', className: 'text-right',
       render: (r) => (
         <div className="flex justify-end gap-1">
+          <Link to={`/platform-admin/companies/${r.id}`} className="btn-ghost !px-2 !py-1"><Eye size={16} /></Link>
           {!r.is_active && (
             <button className="btn-primary !py-1" onClick={() => setToApprove(r)}><Check size={14} /> Approve</button>
           )}

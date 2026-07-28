@@ -68,6 +68,11 @@ React + TypeScript + Tailwind + Supabase.
   you approve it from `/platform-admin` — a page only reachable by a
   manually managed `platform_admins` list (separate from any tenant's
   roles). See "Make yourself the platform admin" below.
+- **Company drill-down** — click any company in `/platform-admin` to see
+  its full profile, change its subscription plan, and view its branches
+  (warehouses) and staff — the same Company → Branches → Staff oversight
+  pattern from the salon SaaS platform, adapted here for warehouses
+  instead of salon locations.
 
 Every other module (Payments, Reports, HR, GPS Tracking, Settings) has
 a route stubbed in `App.tsx` so navigation never breaks. Payments is
@@ -103,7 +108,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0012). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0013). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 ### 2. Configure environment
