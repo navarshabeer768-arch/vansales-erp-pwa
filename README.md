@@ -96,9 +96,17 @@ React + TypeScript + Tailwind + Supabase.
   - **Staff Accounts**: every staff member across every company, for
     oversight (read-only — editing staff still happens inside each
     company).
+- **Store ID**: every company gets a short, unique reference ID (e.g.
+  `VS-3F9A2B`) generated automatically at creation — shown in the
+  sidebar, Company Settings, the Platform Admin console, and the "New
+  company" handoff screen. Staff still sign in with their own
+  individual email/password (this preserves per-staff accountability
+  for sales, approvals, and audit trails across the roles system) — the
+  Store ID is a reference/support identifier alongside that, not a
+  second login mechanism.
 
-Every other module (Payments, Reports, HR, GPS Tracking, Settings) has
-a route stubbed in `App.tsx` so navigation never breaks. Payments is
+Every other module (Payments, Reports, HR, GPS Tracking) has a route
+stubbed in `App.tsx` so navigation never breaks. Payments is
 largely covered already by Collections (customer-side) and Goods
 Receipts (supplier-side cost is captured there); a dedicated Payments
 module would mainly add supplier-payment tracking against
@@ -131,7 +139,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0016). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0017). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 ### 2. Configure environment

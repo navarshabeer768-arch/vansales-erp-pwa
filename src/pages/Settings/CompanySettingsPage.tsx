@@ -74,6 +74,12 @@ export function CompanySettingsPage() {
       </div>
 
       <form onSubmit={handleSubmit(submit)} className="card space-y-5 p-6">
+        <div className="rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800">
+          <span className="text-slate-500">Store ID: </span>
+          <strong>{company.store_id}</strong>
+          <span className="ml-2 text-xs text-slate-400">(reference ID for support — not editable)</span>
+        </div>
+
         {!canEdit && (
           <div className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
             You have view-only access to company settings. Ask a Company Admin to make changes.

@@ -9,6 +9,7 @@ export interface Company {
   name: string;
   legal_name: string | null;
   slug: string;
+  store_id: string;
   logo_url: string | null;
   currency: string;
   tax_number: string | null;

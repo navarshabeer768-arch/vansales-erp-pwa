@@ -41,7 +41,7 @@ export function PlatformCompaniesPage() {
 
   const columns: Column<CompanyRow>[] = [
     { key: 'name', header: 'Company', sortValue: (r) => r.name, render: (r) => (
-      <div><p className="font-medium">{r.name}</p><p className="text-xs text-slate-500">{r.slug}</p></div>
+      <div><p className="font-medium">{r.name}</p><p className="text-xs text-slate-500">{r.store_id}</p></div>
     ) },
     { key: 'phone', header: 'Phone', render: (r) => r.phone ?? '—' },
     { key: 'plan', header: 'Plan', render: (r) => <span className="capitalize">{r.subscription_plan}</span> },
@@ -82,7 +82,7 @@ export function PlatformCompaniesPage() {
 
       <DataTable
         columns={columns} rows={companies} rowKey={(r) => r.id} loading={loading}
-        searchPlaceholder="Search companies…" searchFn={(r, q) => r.name.toLowerCase().includes(q)}
+        searchPlaceholder="Search companies…" searchFn={(r, q) => r.name.toLowerCase().includes(q) || r.store_id.toLowerCase().includes(q)}
       />
 
       <ConfirmDialog

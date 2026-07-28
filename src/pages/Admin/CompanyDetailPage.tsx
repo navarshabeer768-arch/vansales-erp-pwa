@@ -54,7 +54,7 @@ export function CompanyDetailPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{company.name}</h1>
-          <p className="text-sm text-slate-500">{company.slug}</p>
+          <p className="text-sm text-slate-500">Store ID: <strong>{company.store_id}</strong></p>
         </div>
         <span className={`ml-auto ${company.is_active ? 'badge-green' : 'badge-amber'}`}>
           {company.is_active ? 'Active' : 'Pending approval'}

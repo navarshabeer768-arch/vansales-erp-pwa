@@ -6,6 +6,7 @@ export interface CompanyRow {
   id: string;
   name: string;
   slug: string;
+  store_id: string;
   phone: string | null;
   address: string | null;
   currency: string;
@@ -109,8 +110,10 @@ export function useAllCompanies() {
       const { error: approveError } = await supabase.rpc('approve_company', { p_company_id: companyId });
       if (approveError) return { error: approveError.message };
 
+      const { data: createdCompany } = await supabase.from('companies').select('store_id').eq('id', companyId).single();
+
       await load();
-      return { error: null };
+      return { error: null, storeId: createdCompany?.store_id as string | undefined };
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'Something went wrong creating the company.' };
     }

@@ -60,9 +60,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-700 text-sm font-bold text-white">
               {(company?.name ?? 'VS').slice(0, 2).toUpperCase()}
             </div>
-            <span className="truncate font-semibold text-slate-800 dark:text-slate-100">
-              {company?.name ?? 'Van Sales ERP'}
-            </span>
+            <div className="overflow-hidden">
+              <span className="block truncate font-semibold text-slate-800 dark:text-slate-100">
+                {company?.name ?? 'Van Sales ERP'}
+              </span>
+              {company?.store_id && (
+                <span className="block truncate text-[10px] uppercase tracking-wide text-slate-400">{company.store_id}</span>
+              )}
+            </div>
           </div>
           <button className="lg:hidden" onClick={onClose} aria-label="Close menu">
             <X size={20} />

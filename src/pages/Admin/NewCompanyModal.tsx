@@ -28,7 +28,7 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
   const { push } = useToast();
   const [form, setForm] = useState<FormState>(initialForm);
   const [submitting, setSubmitting] = useState(false);
-  const [created, setCreated] = useState<{ email: string; password: string; companyName: string } | null>(null);
+  const [created, setCreated] = useState<{ email: string; password: string; companyName: string; storeId?: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
@@ -41,7 +41,7 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
       return;
     }
     setSubmitting(true);
-    const { error } = await createCompany({
+    const result = await createCompany({
       companyName: form.companyName.trim(), companyPhone: form.companyPhone.trim() || undefined,
       companyAddress: form.companyAddress.trim() || undefined, currency: form.currency,
       taxNumber: form.taxNumber.trim() || undefined, adminFullName: form.adminFullName.trim(),
@@ -49,14 +49,16 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
       tempPassword: form.tempPassword,
     });
     setSubmitting(false);
-    if (error) { push('error', error); return; }
-    setCreated({ email: form.adminEmail.trim(), password: form.tempPassword, companyName: form.companyName.trim() });
+    if (result.error) { push('error', result.error); return; }
+    setCreated({ email: form.adminEmail.trim(), password: form.tempPassword, companyName: form.companyName.trim(), storeId: result.storeId });
     onCreated();
   };
 
   const copyCredentials = async () => {
     if (!created) return;
-    await navigator.clipboard.writeText(`Email: ${created.email}\nPassword: ${created.password}`);
+    await navigator.clipboard.writeText(
+      `Store ID: ${created.storeId ?? '—'}\nEmail: ${created.email}\nPassword: ${created.password}`
+    );
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -69,6 +71,7 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
             <strong>{created.companyName}</strong> is live and active. Share these login details with them:
           </p>
           <div className="rounded-lg bg-slate-50 p-4 text-left text-sm dark:bg-slate-800">
+            <p><span className="text-slate-500">Store ID:</span> <strong>{created.storeId ?? '—'}</strong></p>
             <p><span className="text-slate-500">Email:</span> {created.email}</p>
             <p><span className="text-slate-500">Password:</span> {created.password}</p>
           </div>
