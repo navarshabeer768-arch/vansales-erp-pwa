@@ -60,9 +60,14 @@ export function useAllCompanies() {
 
   const createCompany = useCallback(async (params: {
     companyName: string; companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string;
-    adminFullName: string; adminEmail: string; adminPhone?: string; tempPassword: string;
+    adminFullName: string; adminUsername: string; adminEmail: string; adminPhone?: string; tempPassword: string;
   }) => {
     try {
+      const { data: existingEmail } = await supabase.rpc('resolve_username_email', { p_username: params.adminUsername });
+      if (existingEmail) {
+        return { error: `Username "${params.adminUsername}" is already taken. Choose a different one.` };
+      }
+
       // Ephemeral client: signing up here must never touch the platform admin's
       // own session (the main `supabase` client, which persists sessions).
       const ephemeral = createEphemeralAuthClient();
@@ -92,6 +97,7 @@ export function useAllCompanies() {
         p_admin_user_id: signUpData.user.id,
         p_admin_full_name: params.adminFullName,
         p_admin_email: params.adminEmail,
+        p_admin_username: params.adminUsername,
         p_company_phone: params.companyPhone ?? null,
         p_company_address: params.companyAddress ?? null,
         p_currency: params.currency ?? 'QAR',
@@ -100,7 +106,7 @@ export function useAllCompanies() {
       });
       if (bootstrapError || !companyId) {
         if (bootstrapError?.code === '23505') {
-          return { error: `${params.adminEmail} already has an account elsewhere in the system. Use a different email.` };
+          return { error: `That username or email is already taken elsewhere in the system. Use different ones.` };
         }
         return { error: bootstrapError?.message ?? 'Failed to create the company.' };
       }

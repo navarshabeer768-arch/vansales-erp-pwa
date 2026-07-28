@@ -17,6 +17,7 @@ interface FormState {
   currency: string;
   taxNumber: string;
   fullName: string;
+  username: string;
   adminPhone: string;
   email: string;
   password: string;
@@ -25,7 +26,7 @@ interface FormState {
 
 const initialForm: FormState = {
   companyName: '', companyPhone: '', companyAddress: '', currency: 'QAR', taxNumber: '',
-  fullName: '', adminPhone: '', email: '', password: '', confirmPassword: '',
+  fullName: '', username: '', adminPhone: '', email: '', password: '', confirmPassword: '',
 };
 
 export function RegisterPage() {
@@ -84,8 +85,12 @@ export function RegisterPage() {
     e.preventDefault();
     setError(null);
 
-    if (!form.companyName.trim() || !form.fullName.trim() || !form.email.trim()) {
-      setError('Company name, your name, and email are required.');
+    if (!form.companyName.trim() || !form.fullName.trim() || !form.username.trim() || !form.email.trim()) {
+      setError('Company name, your name, username, and email are required.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]{3,30}$/.test(form.username.trim())) {
+      setError('Username must be 3-30 characters: letters, numbers, and underscores only.');
       return;
     }
     if (form.password.length < 8) {
@@ -102,6 +107,7 @@ export function RegisterPage() {
       companyName: form.companyName.trim(),
       slug: `${slugify(form.companyName)}-${Date.now().toString(36)}`,
       fullName: form.fullName.trim(),
+      username: form.username.trim(),
       email: form.email.trim(),
       password: form.password,
       companyPhone: form.companyPhone.trim() || undefined,
@@ -190,15 +196,21 @@ export function RegisterPage() {
                   onChange={(e) => set('fullName', e.target.value)} required />
               </div>
               <div>
-                <label className="label" htmlFor="adminPhone">Your phone</label>
-                <input id="adminPhone" className="input" value={form.adminPhone}
-                  onChange={(e) => set('adminPhone', e.target.value)} />
+                <label className="label" htmlFor="username">Username *</label>
+                <input id="username" className="input" value={form.username}
+                  onChange={(e) => set('username', e.target.value)} required placeholder="What you'll log in with" />
               </div>
+            </div>
+            <div>
+              <label className="label" htmlFor="adminPhone">Your phone</label>
+              <input id="adminPhone" className="input" value={form.adminPhone}
+                onChange={(e) => set('adminPhone', e.target.value)} />
             </div>
             <div>
               <label className="label" htmlFor="email">Email *</label>
               <input id="email" type="email" className="input" value={form.email}
                 onChange={(e) => set('email', e.target.value)} required />
+              <p className="mt-1 text-xs text-slate-400">For account recovery — you'll log in with your username, not this.</p>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>

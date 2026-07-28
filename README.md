@@ -100,10 +100,20 @@ React + TypeScript + Tailwind + Supabase.
   `VS-3F9A2B`) generated automatically at creation — shown in the
   sidebar, Company Settings, the Platform Admin console, and the "New
   company" handoff screen. Staff still sign in with their own
-  individual email/password (this preserves per-staff accountability
-  for sales, approvals, and audit trails across the roles system) — the
-  Store ID is a reference/support identifier alongside that, not a
-  second login mechanism.
+  individual **username** (not email — see below), which preserves
+  per-staff accountability for sales, approvals, and audit trails
+  across the roles system; the Store ID is a reference/support
+  identifier alongside that, not a second login mechanism.
+- **Username-based login.** Staff sign in with a Username + Password,
+  not an email address — the login screen never shows or asks for
+  email. Underneath, Supabase Auth (the only thing that makes real
+  per-company, per-user data isolation enforceable — RLS checks a
+  verified session, not anything the client claims) still handles the
+  actual authentication; `resolve_username_email()` transparently looks
+  up the matching email so the client can sign in without the user ever
+  seeing it. Email is still collected at signup for account recovery
+  and Supabase Auth's own requirements, just never used as the login
+  identifier.
 
 Every other module (Payments, Reports, HR, GPS Tracking) has a route
 stubbed in `App.tsx` so navigation never breaks. Payments is
@@ -139,7 +149,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0017). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0018). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 ### 2. Configure environment

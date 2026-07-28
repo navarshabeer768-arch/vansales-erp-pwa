@@ -50,6 +50,7 @@ export interface AppUser {
   company_id: string;
   role_id: string;
   employee_code: string | null;
+  username: string;
   full_name: string;
   email: string;
   phone: string | null;

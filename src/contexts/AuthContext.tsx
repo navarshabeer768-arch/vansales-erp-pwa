@@ -13,9 +13,9 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (username: string, password: string) => Promise<{ error: string | null }>;
   signUpCompany: (params: {
-    companyName: string; slug: string; fullName: string; email: string; password: string;
+    companyName: string; slug: string; fullName: string; username: string; email: string; password: string;
     companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string; adminPhone?: string;
   }) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -97,17 +97,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, [refresh, loadProfile]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (username: string, password: string) => {
+    const { data: email, error: resolveError } = await supabase.rpc('resolve_username_email', { p_username: username });
+    if (resolveError || !email) {
+      return { error: 'Invalid username or password.' };
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    if (error) {
+      // Never reveal whether the username existed — same generic message either way.
+      return { error: 'Invalid username or password.' };
+    }
+    return { error: null };
   }, []);
 
   const signUpCompany = useCallback(
     async (params: {
-      companyName: string; slug: string; fullName: string; email: string; password: string;
+      companyName: string; slug: string; fullName: string; username: string; email: string; password: string;
       companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string; adminPhone?: string;
     }) => {
-      const { companyName, slug, fullName, email, password, companyPhone, companyAddress, currency, taxNumber, adminPhone } = params;
+      const { companyName, slug, fullName, username, email, password, companyPhone, companyAddress, currency, taxNumber, adminPhone } = params;
+
+      const { data: existingEmail } = await supabase.rpc('resolve_username_email', { p_username: username });
+      if (existingEmail) {
+        return { error: `Username "${username}" is already taken. Choose a different one.` };
+      }
+
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
       if (signUpError) {
         return { error: signUpError.message };
@@ -125,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         p_admin_user_id: signUpData.user.id,
         p_admin_full_name: fullName,
         p_admin_email: email,
+        p_admin_username: username,
         p_company_phone: companyPhone ?? null,
         p_company_address: companyAddress ?? null,
         p_currency: currency ?? 'QAR',
@@ -134,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (bootstrapError) {
         if (bootstrapError.code === '23505') {
-          return { error: `${email} already has an account. Sign in instead, or use a different email.` };
+          return { error: `That username or email is already taken. Try different ones.` };
         }
         return { error: bootstrapError.message };
       }

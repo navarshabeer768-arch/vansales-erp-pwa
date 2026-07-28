@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 export function LoginPage() {
   const { signIn, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -16,12 +16,12 @@ export function LoginPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!email || !password) {
-      setError('Enter both email and password.');
+    if (!username || !password) {
+      setError('Enter both username and password.');
       return;
     }
     setSubmitting(true);
-    const { error: signInError } = await signIn(email, password);
+    const { error: signInError } = await signIn(username, password);
     setSubmitting(false);
     if (signInError) setError(signInError);
     else navigate('/');
@@ -35,7 +35,7 @@ export function LoginPage() {
             <Truck size={24} />
           </div>
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Van Sales ERP</h1>
-          <p className="text-sm text-slate-500">Sign in to your company workspace</p>
+          <p className="text-sm text-slate-500">Sign in to your store</p>
         </div>
 
         <form onSubmit={onSubmit} className="card space-y-4 p-6">
@@ -45,10 +45,10 @@ export function LoginPage() {
             </div>
           )}
           <div>
-            <label className="label" htmlFor="email">Email</label>
+            <label className="label" htmlFor="username">Username</label>
             <input
-              id="email" type="email" className="input" autoComplete="email"
-              value={email} onChange={(e) => setEmail(e.target.value)} required
+              id="username" type="text" className="input" autoComplete="username"
+              value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus
             />
           </div>
           <div>
