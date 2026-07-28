@@ -14,6 +14,10 @@ import { CatalogSettingsPage } from '@/pages/Inventory/CatalogSettingsPage';
 import { WarehousesPage } from '@/pages/Warehouse/WarehousesPage';
 import { StockPage } from '@/pages/Warehouse/StockPage';
 import { StockAdjustmentPage } from '@/pages/Warehouse/StockAdjustmentPage';
+import { VanLoadingHomePage } from '@/pages/Van/VanLoadingHomePage';
+import { VanLoadingPage } from '@/pages/Van/VanLoadingPage';
+import { VansPage } from '@/pages/Van/VansPage';
+import { VanUnloadingPage } from '@/pages/Van/VanUnloadingPage';
 
 export default function App() {
   const { loading } = useAuth();
@@ -38,10 +42,14 @@ export default function App() {
             <Route path="warehouse/stock/:warehouseId" element={<StockPage />} />
             <Route path="warehouse/adjustments/:warehouseId" element={<StockAdjustmentPage />} />
 
-            {/* Phase 2+ modules — routed so navigation never 404s, built out next */}
+            <Route path="van-loading" element={<VanLoadingHomePage />}>
+              <Route index element={<VanLoadingPage />} />
+              <Route path="vans" element={<VansPage />} />
+            </Route>
+            <Route path="van-unloading" element={<VanUnloadingPage />} />
+
+            {/* Phase 3+ modules — routed so navigation never 404s, built out next */}
             <Route path="sales" element={<PlaceholderPage title="Sales / POS" />} />
-            <Route path="van-loading" element={<PlaceholderPage title="Van Loading" />} />
-            <Route path="van-unloading" element={<PlaceholderPage title="Van Unloading" />} />
             <Route path="routes" element={<PlaceholderPage title="Route Planning" />} />
             <Route path="visits" element={<PlaceholderPage title="Customer Visits" />} />
             <Route path="purchases" element={<PlaceholderPage title="Purchases" />} />
