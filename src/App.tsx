@@ -21,6 +21,8 @@ import { VanUnloadingPage } from '@/pages/Van/VanUnloadingPage';
 import { SalesHomePage } from '@/pages/Sales/SalesHomePage';
 import { POSPage } from '@/pages/Sales/POSPage';
 import { SalesHistoryPage } from '@/pages/Sales/SalesHistoryPage';
+import { CollectionsPage } from '@/pages/Collections/CollectionsPage';
+import { ReturnsPage } from '@/pages/Returns/ReturnsPage';
 
 export default function App() {
   const { loading } = useAuth();
@@ -61,8 +63,10 @@ export default function App() {
             <Route path="visits" element={<PlaceholderPage title="Customer Visits" />} />
             <Route path="purchases" element={<PlaceholderPage title="Purchases" />} />
             <Route path="payments" element={<PlaceholderPage title="Payments" />} />
-            <Route path="collections" element={<PlaceholderPage title="Collections" />} />
-            <Route path="returns" element={<PlaceholderPage title="Returns" />} />
+            <Route path="collections" element={<CollectionsPage />} />
+            <Route path="returns" element={<ReturnsPage />} />
+
+            {/* Phase 5+ modules — routed so navigation never 404s, built out next */}
             <Route path="accounting" element={<PlaceholderPage title="Accounting" />} />
             <Route path="reports" element={<PlaceholderPage title="Reports" />} />
             <Route path="hr" element={<PlaceholderPage title="HR" />} />

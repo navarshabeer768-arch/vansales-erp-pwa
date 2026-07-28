@@ -3,7 +3,7 @@
 Multi-tenant, offline-capable Van Sales / FMCG distribution platform.
 React + TypeScript + Tailwind + Supabase.
 
-## Status: Phase 3 complete (Foundation + Inventory/Warehouse + Van Loading/Unloading + Sales/POS)
+## Status: Phase 4 complete (Foundation + Inventory/Warehouse + Van Loading/Unloading + Sales/POS + Collections/Returns)
 
 **Foundation (this phase):**
 - Full multi-tenant Postgres/Supabase schema (companies, roles/permissions,
@@ -37,14 +37,21 @@ React + TypeScript + Tailwind + Supabase.
   none of it does. Offline-first: if the network is down, the sale is
   queued in IndexedDB (Dexie) and auto-synced (idempotently, via a
   client-generated UUID) the moment connectivity returns.
+- **Fully working module: Collections & Returns** — outstanding customer
+  ledger with one-click receipt recording (cash/card/bank/cheque/PDC),
+  optionally applied against a specific open invoice, via the
+  `record_collection` RPC. Returns cover sales returns (restocks a
+  warehouse or van and credits the customer via `approve_return`) and
+  purchase returns (de-stocks a warehouse being sent back to a
+  supplier) — both atomic and logged to `stock_movements`.
 - PWA: installable, offline-caches Supabase REST reads, auto-updates.
 
 Every other module (Route Planning, Customer Visits, Purchases,
-Payments, Collections, Returns, Accounting, Reports, HR, GPS Tracking,
-Settings) has a route stubbed in `App.tsx` so navigation never breaks,
-and the underlying schema + RPCs already exist — only the UI remains.
-Build them one at a time, verifying each against real Supabase data
-before moving to the next, the same way every module so far was built.
+Payments, Accounting, Reports, HR, GPS Tracking, Settings) has a route
+stubbed in `App.tsx` so navigation never breaks, and the underlying
+schema + RPCs already exist — only the UI remains. Build them one at a
+time, verifying each against real Supabase data before moving to the
+next, the same way every module so far was built.
 
 ## Live deployment
 
@@ -73,7 +80,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0008). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0009). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 ### 2. Configure environment
@@ -131,13 +138,10 @@ grants, and makes you `company_admin`. From there:
 
 ## What's next (build order recommendation)
 
-1. **Collections & Returns** — outstanding ledger, receipt printing,
-   using the existing `record_collection` RPC and `returns`/`return_items`
-   tables.
-2. **Route Planning & Customer Visits** — GPS check-in/out, route sequencing.
-3. **Purchases & Accounting** — supplier POs/GRNs, chart of accounts, P&L.
-4. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`.
-5. **PDT hardware layer** — barcode scanning (camera-based, works on any
+1. **Route Planning & Customer Visits** — GPS check-in/out, route sequencing.
+2. **Purchases & Accounting** — supplier POs/GRNs, chart of accounts, P&L.
+3. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`.
+4. **PDT hardware layer** — barcode scanning (camera-based, works on any
    PDT with a rear camera without native code), Bluetooth/thermal
    printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm
    and A4 templates), GPS polling into `gps_logs`.
