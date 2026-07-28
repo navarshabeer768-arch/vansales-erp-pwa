@@ -2,11 +2,13 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/common/ProtectedRoute';
+import { ApprovalGate } from '@/components/common/ApprovalGate';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 import { PlaceholderPage } from '@/components/common/PlaceholderPage';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { LoginPage } from '@/pages/Auth/LoginPage';
 import { RegisterPage } from '@/pages/Auth/RegisterPage';
+import { PlatformAdminPage } from '@/pages/Admin/PlatformAdminPage';
 import { DashboardPage } from '@/pages/Dashboard/DashboardPage';
 import { InventoryHomePage } from '@/pages/Inventory/InventoryHomePage';
 import { ProductsPage } from '@/pages/Inventory/ProductsPage';
@@ -43,8 +45,11 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
 
         <Route element={<ProtectedRoute />}>
-          <Route element={<DashboardLayout />}>
-            <Route index element={<DashboardPage />} />
+          <Route path="/platform-admin" element={<PlatformAdminPage />} />
+
+          <Route element={<ApprovalGate />}>
+            <Route element={<DashboardLayout />}>
+              <Route index element={<DashboardPage />} />
 
             <Route path="inventory" element={<InventoryHomePage />}>
               <Route index element={<ProductsPage />} />
@@ -86,6 +91,7 @@ export default function App() {
             <Route path="hr" element={<PlaceholderPage title="HR" />} />
             <Route path="gps" element={<PlaceholderPage title="GPS Tracking" />} />
             <Route path="settings" element={<PlaceholderPage title="Settings" />} />
+            </Route>
           </Route>
         </Route>
 

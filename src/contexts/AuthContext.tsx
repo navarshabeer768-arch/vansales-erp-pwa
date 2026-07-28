@@ -9,6 +9,7 @@ interface AuthState {
   company: Company | null;
   roleCode: RoleCode | null;
   permissions: Set<string>; // "module:action"
+  isPlatformAdmin: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -31,6 +32,7 @@ const initialState: AuthState = {
   company: null,
   roleCode: null,
   permissions: new Set(),
+  isPlatformAdmin: false,
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -48,12 +50,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const [{ data: company }, { data: rolePerms }] = await Promise.all([
+    const [{ data: company }, { data: rolePerms }, { data: platformAdminResult }] = await Promise.all([
       supabase.from('companies').select('*').eq('id', appUser.company_id).single(),
       supabase
         .from('role_permissions')
         .select('permission:permissions(code)')
         .eq('role_id', appUser.role_id),
+      supabase.rpc('is_platform_admin'),
     ]);
 
     const permissions = new Set<string>(
@@ -69,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       company: (company ?? null) as Company | null,
       roleCode: (appUser as any).role?.code ?? null,
       permissions,
+      isPlatformAdmin: platformAdminResult === true,
     });
   }, []);
 

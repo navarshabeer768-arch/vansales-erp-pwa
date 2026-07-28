@@ -63,6 +63,11 @@ React + TypeScript + Tailwind + Supabase.
   account together in one step, with a graceful "check your email"
   state if email confirmation is required by your Supabase Auth
   settings.
+- **New companies require your approval.** Self-registration creates
+  the company and admin account, but the company stays inactive until
+  you approve it from `/platform-admin` — a page only reachable by a
+  manually managed `platform_admins` list (separate from any tenant's
+  roles). See "Make yourself the platform admin" below.
 
 Every other module (Payments, Reports, HR, GPS Tracking, Settings) has
 a route stubbed in `App.tsx` so navigation never breaks. Payments is
@@ -98,7 +103,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0011). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0012). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 ### 2. Configure environment
@@ -116,7 +121,32 @@ npm run build     # production build to dist/
 npm run preview   # preview the production build
 ```
 
-### 4. Create your first company
+### 4. Make yourself the platform admin (do this once)
+
+New self-service registrations now start **pending** — a company can sign
+up, but nobody in it can use the app until you approve it from
+`/platform-admin`. That page is only reachable by a **platform admin**: a
+small, manually managed list (`platform_admins` table), completely
+separate from any tenant's `company_admin` role.
+
+To become the first platform admin:
+1. Register your own company at `/register` as normal.
+2. In the Supabase dashboard, go to **Authentication → Users** and copy
+   your user's UUID.
+3. In the SQL Editor, run:
+   ```sql
+   insert into platform_admins (user_id, note)
+   values ('<your-user-uuid>', 'platform owner');
+   ```
+4. Visit `/platform-admin` (not linked in the sidebar — bookmark it) to
+   approve your own company, and any future signups.
+
+Being a platform admin bypasses the pending-approval screen for your own
+account so you're never locked out of `/platform-admin`, but it does
+**not** grant tenant-level permissions inside any company's data — those
+still come from the roles/permissions system.
+
+### 5. Create your first company (once approved)
 Go to `/register` — this calls `bootstrap_company()`, which creates the
 tenant row, clones the 10 system roles with their default permission
 grants, and makes you `company_admin`. From there:
