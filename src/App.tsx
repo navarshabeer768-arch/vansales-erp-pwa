@@ -36,6 +36,7 @@ import { GoodsReceiptsPage } from '@/pages/Purchases/GoodsReceiptsPage';
 import { AccountingHomePage } from '@/pages/Accounting/AccountingHomePage';
 import { PLSummaryPage } from '@/pages/Accounting/PLSummaryPage';
 import { ExpensesPage } from '@/pages/Accounting/ExpensesPage';
+import { CompanySettingsPage } from '@/pages/Settings/CompanySettingsPage';
 
 export default function App() {
   const { loading } = useAuth();
@@ -97,7 +98,7 @@ export default function App() {
             <Route path="reports" element={<PlaceholderPage title="Reports" />} />
             <Route path="hr" element={<PlaceholderPage title="HR" />} />
             <Route path="gps" element={<PlaceholderPage title="GPS Tracking" />} />
-            <Route path="settings" element={<PlaceholderPage title="Settings" />} />
+            <Route path="settings" element={<CompanySettingsPage />} />
             </Route>
           </Route>
         </Route>

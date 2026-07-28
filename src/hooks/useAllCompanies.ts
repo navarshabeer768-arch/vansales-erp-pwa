@@ -61,41 +61,59 @@ export function useAllCompanies() {
     companyName: string; companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string;
     adminFullName: string; adminEmail: string; adminPhone?: string; tempPassword: string;
   }) => {
-    // Ephemeral client: signing up here must never touch the platform admin's
-    // own session (the main `supabase` client, which persists sessions).
-    const ephemeral = createEphemeralAuthClient();
-    const { data: signUpData, error: signUpError } = await ephemeral.auth.signUp({
-      email: params.adminEmail, password: params.tempPassword,
-    });
-    if (signUpError || !signUpData.user) {
-      return { error: signUpError?.message ?? 'Failed to create the login for this company' };
+    try {
+      // Ephemeral client: signing up here must never touch the platform admin's
+      // own session (the main `supabase` client, which persists sessions).
+      const ephemeral = createEphemeralAuthClient();
+      const { data: signUpData, error: signUpError } = await ephemeral.auth.signUp({
+        email: params.adminEmail, password: params.tempPassword,
+      });
+      if (signUpError) {
+        return { error: signUpError.message };
+      }
+      if (!signUpData.user) {
+        return { error: 'Failed to create the login for this company.' };
+      }
+      // When "Confirm email" is on, Supabase silently returns the *existing*
+      // user (with an empty identities array) instead of erroring, so it looks
+      // like signup succeeded — but no new auth user was actually created, and
+      // that person may already run a different company. Catch it here rather
+      // than letting it fail later on a confusing duplicate-key error.
+      if (Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+        return { error: `${params.adminEmail} already has an account. Use a different email for this company's admin login.` };
+      }
+
+      const slug = `${params.companyName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Date.now().toString(36)}`;
+
+      const { data: companyId, error: bootstrapError } = await supabase.rpc('bootstrap_company', {
+        p_company_name: params.companyName,
+        p_slug: slug,
+        p_admin_user_id: signUpData.user.id,
+        p_admin_full_name: params.adminFullName,
+        p_admin_email: params.adminEmail,
+        p_company_phone: params.companyPhone ?? null,
+        p_company_address: params.companyAddress ?? null,
+        p_currency: params.currency ?? 'QAR',
+        p_tax_number: params.taxNumber ?? null,
+        p_admin_phone: params.adminPhone ?? null,
+      });
+      if (bootstrapError || !companyId) {
+        if (bootstrapError?.code === '23505') {
+          return { error: `${params.adminEmail} already has an account elsewhere in the system. Use a different email.` };
+        }
+        return { error: bootstrapError?.message ?? 'Failed to create the company.' };
+      }
+
+      // Platform admins can approve their own creations immediately — no need
+      // for the pending-approval step self-service signups go through.
+      const { error: approveError } = await supabase.rpc('approve_company', { p_company_id: companyId });
+      if (approveError) return { error: approveError.message };
+
+      await load();
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Something went wrong creating the company.' };
     }
-
-    const slug = `${params.companyName.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')}-${Date.now().toString(36)}`;
-
-    const { data: companyId, error: bootstrapError } = await supabase.rpc('bootstrap_company', {
-      p_company_name: params.companyName,
-      p_slug: slug,
-      p_admin_user_id: signUpData.user.id,
-      p_admin_full_name: params.adminFullName,
-      p_admin_email: params.adminEmail,
-      p_company_phone: params.companyPhone ?? null,
-      p_company_address: params.companyAddress ?? null,
-      p_currency: params.currency ?? 'QAR',
-      p_tax_number: params.taxNumber ?? null,
-      p_admin_phone: params.adminPhone ?? null,
-    });
-    if (bootstrapError || !companyId) {
-      return { error: bootstrapError?.message ?? 'Failed to create the company' };
-    }
-
-    // Platform admins can approve their own creations immediately — no need
-    // for the pending-approval step self-service signups go through.
-    const { error: approveError } = await supabase.rpc('approve_company', { p_company_id: companyId });
-    if (approveError) return { error: approveError.message };
-
-    await load();
-    return { error: null };
   }, [load]);
 
   return { companies, loading, reload: load, approve, suspend, createCompany };

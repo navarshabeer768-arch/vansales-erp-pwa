@@ -109,8 +109,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }) => {
       const { companyName, slug, fullName, email, password, companyPhone, companyAddress, currency, taxNumber, adminPhone } = params;
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
-      if (signUpError || !signUpData.user) {
-        return { error: signUpError?.message ?? 'Sign up failed' };
+      if (signUpError) {
+        return { error: signUpError.message };
+      }
+      if (!signUpData.user) {
+        return { error: 'Sign up failed' };
+      }
+      if (Array.isArray(signUpData.user.identities) && signUpData.user.identities.length === 0) {
+        return { error: `${email} already has an account. Sign in instead, or use a different email.` };
       }
 
       const { error: bootstrapError } = await supabase.rpc('bootstrap_company', {
@@ -127,6 +133,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (bootstrapError) {
+        if (bootstrapError.code === '23505') {
+          return { error: `${email} already has an account. Sign in instead, or use a different email.` };
+        }
         return { error: bootstrapError.message };
       }
       return { error: null };

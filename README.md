@@ -74,6 +74,14 @@ React + TypeScript + Tailwind + Supabase.
   real Supabase Auth sign-in and immediately signs out anyone who isn't
   one (never dropping a non-admin into the console or into another
   company's data).
+- **Company Settings** (tenant-side, not platform admin): every company
+  can now edit its own profile — name, legal name, phone, email,
+  address, currency, tax/VAT number, and default tax rate — from
+  Settings in the sidebar. Requires `settings:edit` (Company Admin has
+  it by default); other roles see the same page read-only. These fields
+  can be set once at creation (via `/register` or the platform admin's
+  "New company"), but don't have to be final — the company edits them
+  going forward from here.
 - **Company drill-down** — click any company in `/platform-admin` to see
   its full profile, change its subscription plan, and view its branches
   (warehouses) and staff — the same Company → Branches → Staff oversight
