@@ -100,6 +100,10 @@ React + TypeScript + Tailwind + Supabase.
   generated automatically at creation — shown in the sidebar, Company
   Settings, the Platform Admin console, and the "New company" handoff
   screen. It's also one of the three fields used at login (see below).
+  It can also be **customized** — both `/register` and "New company" have
+  an optional Store ID field with live availability checking, so you can
+  set something memorable (e.g. `MAIN-BRANCH`) instead of the random
+  default.
 - **Store ID + Username login, no email anywhere.** Every company gets a
   unique Store ID (e.g. `VS-3F9A2B`); staff sign in with **Store ID +
   Username + Password**. Usernames only need to be unique *within* a
@@ -148,7 +152,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0019). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0020). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn

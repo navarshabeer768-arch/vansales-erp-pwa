@@ -18,6 +18,7 @@ interface AuthContextValue extends AuthState {
   signUpCompany: (params: {
     companyName: string; slug: string; fullName: string; username: string; password: string;
     companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string; adminPhone?: string;
+    storeId?: string;
   }) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   can: (permissionCode: string) => boolean;
@@ -117,8 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (params: {
       companyName: string; slug: string; fullName: string; username: string; password: string;
       companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string; adminPhone?: string;
+      storeId?: string;
     }) => {
-      const { companyName, slug, fullName, username, password, companyPhone, companyAddress, currency, taxNumber, adminPhone } = params;
+      const { companyName, slug, fullName, username, password, companyPhone, companyAddress, currency, taxNumber, adminPhone, storeId } = params;
       const syntheticEmail = generateSyntheticEmail(username);
 
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email: syntheticEmail, password });
@@ -141,6 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         p_currency: currency ?? 'QAR',
         p_tax_number: taxNumber ?? null,
         p_admin_phone: adminPhone ?? null,
+        p_store_id: storeId ?? null,
       });
 
       if (bootstrapError) {

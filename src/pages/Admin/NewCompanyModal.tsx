@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Copy, Check as CheckIcon } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
-import { useAllCompanies } from '@/hooks/useAllCompanies';
+import { useAllCompanies, checkStoreIdAvailable } from '@/hooks/useAllCompanies';
 import { useToast } from '@/contexts/ToastContext';
 
 const CURRENCIES = ['QAR', 'AED', 'SAR', 'USD', 'EUR', 'GBP', 'INR', 'PKR'];
@@ -15,12 +15,12 @@ function generatePassword() {
 
 interface FormState {
   companyName: string; companyPhone: string; companyAddress: string; currency: string; taxNumber: string;
-  adminFullName: string; adminUsername: string; adminPhone: string; tempPassword: string;
+  adminFullName: string; adminUsername: string; adminPhone: string; tempPassword: string; storeId: string;
 }
 
 const initialForm: FormState = {
   companyName: '', companyPhone: '', companyAddress: '', currency: 'QAR', taxNumber: '',
-  adminFullName: '', adminUsername: '', adminPhone: '', tempPassword: generatePassword(),
+  adminFullName: '', adminUsername: '', adminPhone: '', tempPassword: generatePassword(), storeId: '',
 };
 
 export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
@@ -30,10 +30,25 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
   const [submitting, setSubmitting] = useState(false);
   const [created, setCreated] = useState<{ username: string; password: string; companyName: string; storeId?: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [storeIdStatus, setStoreIdStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
-  const reset = () => { setForm({ ...initialForm, tempPassword: generatePassword() }); setCreated(null); };
+  const reset = () => { setForm({ ...initialForm, tempPassword: generatePassword() }); setCreated(null); setStoreIdStatus('idle'); };
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const trimmed = form.storeId.trim();
+    if (!trimmed) { setStoreIdStatus('idle'); return; }
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]{2,19}$/.test(trimmed)) { setStoreIdStatus('invalid'); return; }
+    setStoreIdStatus('checking');
+    debounceRef.current = setTimeout(async () => {
+      const available = await checkStoreIdAvailable(trimmed);
+      setStoreIdStatus(available ? 'available' : 'taken');
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [form.storeId]);
 
   const submit = async () => {
     if (!form.companyName.trim() || !form.adminFullName.trim() || !form.adminUsername.trim() || form.tempPassword.length < 8) {
@@ -44,6 +59,10 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
       push('error', 'Username must be 3-30 characters: letters, numbers, and underscores only.');
       return;
     }
+    if (storeIdStatus === 'invalid' || storeIdStatus === 'taken') {
+      push('error', 'Fix the Store ID before continuing.');
+      return;
+    }
     setSubmitting(true);
     const result = await createCompany({
       companyName: form.companyName.trim(), companyPhone: form.companyPhone.trim() || undefined,
@@ -51,6 +70,7 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
       taxNumber: form.taxNumber.trim() || undefined, adminFullName: form.adminFullName.trim(),
       adminUsername: form.adminUsername.trim(),
       adminPhone: form.adminPhone.trim() || undefined, tempPassword: form.tempPassword,
+      storeId: form.storeId.trim() || undefined,
     });
     setSubmitting(false);
     if (result.error) { push('error', result.error); return; }
@@ -122,6 +142,18 @@ export function NewCompanyModal({ open, onClose, onCreated }: { open: boolean; o
           <div>
             <label className="label">Tax / VAT number</label>
             <input className="input" value={form.taxNumber} onChange={(e) => set('taxNumber', e.target.value)} />
+          </div>
+          <div>
+            <label className="label">Store ID</label>
+            <input
+              className="input uppercase" value={form.storeId}
+              onChange={(e) => set('storeId', e.target.value)}
+              placeholder="Leave blank to auto-generate, or set your own (e.g. MAIN-BRANCH)"
+            />
+            {storeIdStatus === 'checking' && <p className="mt-1 text-xs text-slate-400">Checking availability…</p>}
+            {storeIdStatus === 'available' && <p className="mt-1 text-xs text-emerald-600">Available</p>}
+            {storeIdStatus === 'taken' && <p className="mt-1 text-xs text-red-600">Already taken — try another.</p>}
+            {storeIdStatus === 'invalid' && <p className="mt-1 text-xs text-red-600">3-20 characters: letters, numbers, hyphens, or underscores.</p>}
           </div>
         </fieldset>
 

@@ -34,6 +34,12 @@ export interface CompanyStaffMember {
   role?: { name: string } | null;
 }
 
+export async function checkStoreIdAvailable(storeId: string): Promise<boolean> {
+  if (!storeId.trim()) return true; // empty = auto-generate, always "available"
+  const { data } = await supabase.rpc('is_store_id_available', { p_store_id: storeId.trim() });
+  return data === true;
+}
+
 export function useAllCompanies() {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +67,7 @@ export function useAllCompanies() {
 
   const createCompany = useCallback(async (params: {
     companyName: string; companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string;
-    adminFullName: string; adminUsername: string; adminPhone?: string; tempPassword: string;
+    adminFullName: string; adminUsername: string; adminPhone?: string; tempPassword: string; storeId?: string;
   }) => {
     try {
       const syntheticEmail = generateSyntheticEmail(params.adminUsername);
@@ -93,6 +99,7 @@ export function useAllCompanies() {
         p_currency: params.currency ?? 'QAR',
         p_tax_number: params.taxNumber ?? null,
         p_admin_phone: params.adminPhone ?? null,
+        p_store_id: params.storeId ?? null,
       });
       if (bootstrapError || !companyId) {
         if (bootstrapError?.code === '23505') {

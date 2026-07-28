@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Truck, Loader2, Building2, User, Lock } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { checkStoreIdAvailable } from '@/hooks/useAllCompanies';
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -16,6 +17,7 @@ interface FormState {
   companyAddress: string;
   currency: string;
   taxNumber: string;
+  storeId: string;
   fullName: string;
   username: string;
   adminPhone: string;
@@ -24,7 +26,7 @@ interface FormState {
 }
 
 const initialForm: FormState = {
-  companyName: '', companyPhone: '', companyAddress: '', currency: 'QAR', taxNumber: '',
+  companyName: '', companyPhone: '', companyAddress: '', currency: 'QAR', taxNumber: '', storeId: '',
   fullName: '', username: '', adminPhone: '', password: '', confirmPassword: '',
 };
 
@@ -35,10 +37,25 @@ export function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [registrationClosed, setRegistrationClosed] = useState<boolean | null>(null);
+  const [storeIdStatus, setStoreIdStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     supabase.rpc('platform_has_admin').then(({ data }) => setRegistrationClosed(data === true));
   }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const trimmed = form.storeId.trim();
+    if (!trimmed) { setStoreIdStatus('idle'); return; }
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]{2,19}$/.test(trimmed)) { setStoreIdStatus('invalid'); return; }
+    setStoreIdStatus('checking');
+    debounceRef.current = setTimeout(async () => {
+      const available = await checkStoreIdAvailable(trimmed);
+      setStoreIdStatus(available ? 'available' : 'taken');
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [form.storeId]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -83,6 +100,10 @@ export function RegisterPage() {
       setError('Passwords do not match.');
       return;
     }
+    if (storeIdStatus === 'invalid' || storeIdStatus === 'taken') {
+      setError('Fix the Store ID before continuing.');
+      return;
+    }
 
     setSubmitting(true);
     const { error: signUpError } = await signUpCompany({
@@ -96,6 +117,7 @@ export function RegisterPage() {
       currency: form.currency,
       taxNumber: form.taxNumber.trim() || undefined,
       adminPhone: form.adminPhone.trim() || undefined,
+      storeId: form.storeId.trim() || undefined,
     });
     setSubmitting(false);
 
@@ -168,6 +190,16 @@ export function RegisterPage() {
               <label className="label" htmlFor="taxNumber">Tax / VAT number</label>
               <input id="taxNumber" className="input" value={form.taxNumber}
                 onChange={(e) => set('taxNumber', e.target.value)} placeholder="Optional — add later in Settings if unsure" />
+            </div>
+            <div>
+              <label className="label" htmlFor="storeId">Store ID</label>
+              <input id="storeId" className="input uppercase" value={form.storeId}
+                onChange={(e) => set('storeId', e.target.value)}
+                placeholder="Leave blank to auto-generate, or set your own (e.g. MAIN-BRANCH)" />
+              {storeIdStatus === 'checking' && <p className="mt-1 text-xs text-slate-400">Checking availability…</p>}
+              {storeIdStatus === 'available' && <p className="mt-1 text-xs text-emerald-600">Available</p>}
+              {storeIdStatus === 'taken' && <p className="mt-1 text-xs text-red-600">Already taken — try another.</p>}
+              {storeIdStatus === 'invalid' && <p className="mt-1 text-xs text-red-600">3-20 characters: letters, numbers, hyphens, or underscores.</p>}
             </div>
           </fieldset>
 
