@@ -2,12 +2,14 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/common/ProtectedRoute';
+import { PlatformProtectedRoute } from '@/components/common/PlatformProtectedRoute';
 import { ApprovalGate } from '@/components/common/ApprovalGate';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 import { PlaceholderPage } from '@/components/common/PlaceholderPage';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { LoginPage } from '@/pages/Auth/LoginPage';
 import { RegisterPage } from '@/pages/Auth/RegisterPage';
+import { PlatformLoginPage } from '@/pages/Admin/PlatformLoginPage';
 import { PlatformAdminPage } from '@/pages/Admin/PlatformAdminPage';
 import { CompanyDetailPage } from '@/pages/Admin/CompanyDetailPage';
 import { DashboardPage } from '@/pages/Dashboard/DashboardPage';
@@ -45,10 +47,13 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        <Route element={<ProtectedRoute />}>
+        <Route path="/platform-admin/login" element={<PlatformLoginPage />} />
+        <Route element={<PlatformProtectedRoute />}>
           <Route path="/platform-admin" element={<PlatformAdminPage />} />
           <Route path="/platform-admin/companies/:companyId" element={<CompanyDetailPage />} />
+        </Route>
 
+        <Route element={<ProtectedRoute />}>
           <Route element={<ApprovalGate />}>
             <Route element={<DashboardLayout />}>
               <Route index element={<DashboardPage />} />

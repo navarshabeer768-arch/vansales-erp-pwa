@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Navigate, Link } from 'react-router-dom';
-import { ShieldCheck, Check, Ban, Eye, Plus } from 'lucide-react';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
+import { ShieldCheck, Check, Ban, Eye, Plus, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAllCompanies, CompanyRow } from '@/hooks/useAllCompanies';
 import { DataTable, Column } from '@/components/ui/DataTable';
@@ -9,7 +9,8 @@ import { useToast } from '@/contexts/ToastContext';
 import { NewCompanyModal } from './NewCompanyModal';
 
 export function PlatformAdminPage() {
-  const { isPlatformAdmin, loading: authLoading } = useAuth();
+  const { isPlatformAdmin, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
   const { companies, loading, approve, suspend, reload } = useAllCompanies();
   const { push } = useToast();
   const [toApprove, setToApprove] = useState<CompanyRow | null>(null);
@@ -17,7 +18,7 @@ export function PlatformAdminPage() {
   const [newCompanyOpen, setNewCompanyOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  if (!authLoading && !isPlatformAdmin) return <Navigate to="/" replace />;
+  if (!authLoading && !isPlatformAdmin) return <Navigate to="/platform-admin/login" replace />;
 
   const handleApprove = async () => {
     if (!toApprove) return;
@@ -84,6 +85,9 @@ export function PlatformAdminPage() {
         </div>
         <button className="btn-primary ml-auto" onClick={() => setNewCompanyOpen(true)}>
           <Plus size={16} /> New company
+        </button>
+        <button className="btn-secondary" onClick={async () => { await signOut(); navigate('/platform-admin/login'); }}>
+          <LogOut size={16} /> Sign out
         </button>
       </div>
 

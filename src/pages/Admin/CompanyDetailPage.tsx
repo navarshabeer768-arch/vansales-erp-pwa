@@ -18,7 +18,7 @@ export function CompanyDetailPage() {
   const { push } = useToast();
   const [changingPlan, setChangingPlan] = useState(false);
 
-  if (!authLoading && !isPlatformAdmin) return <Navigate to="/" replace />;
+  if (!authLoading && !isPlatformAdmin) return <Navigate to="/platform-admin/login" replace />;
 
   const handlePlanChange = async (plan: CompanyRow['subscription_plan']) => {
     setChangingPlan(true);

@@ -68,6 +68,12 @@ React + TypeScript + Tailwind + Supabase.
   exists, it closes to everyone else (enforced server-side, not just a
   hidden link). Every company after that is created by you, from
   `/platform-admin`, instantly active.
+- **The platform admin console has its own separate login** at
+  `/platform-admin/login` — a distinct screen from the tenant company
+  login, on its own URL, that verifies the platform-admin flag after a
+  real Supabase Auth sign-in and immediately signs out anyone who isn't
+  one (never dropping a non-admin into the console or into another
+  company's data).
 - **Company drill-down** — click any company in `/platform-admin` to see
   its full profile, change its subscription plan, and view its branches
   (warehouses) and staff — the same Company → Branches → Staff oversight
@@ -135,6 +141,12 @@ just hidden in the UI). From then on, **every new company is created by
 you**, from `/platform-admin`, instantly active — no public sign-up path
 at all.
 
+The platform admin console has its **own separate login page**,
+entirely distinct from the tenant company login — different URL,
+different screen, and it explicitly rejects any account that isn't a
+platform admin (signing them straight back out) rather than dropping
+them into some other company's data.
+
 One-time setup:
 1. Visit `/register` directly (there's no link to it anywhere in the UI —
    go straight to the URL) and create your own company + account. Use
@@ -147,10 +159,12 @@ One-time setup:
    insert into platform_admins (user_id, note)
    values ('<your-user-uuid>', 'platform owner');
    ```
-4. Visit `/platform-admin` (bookmark it — exact link:
-   `https://navarshabeer768-arch.github.io/vansales-erp-pwa/#/platform-admin`
-   once deployed, or `http://localhost:5173/platform-admin` in dev).
-   `/register` is now closed for everyone but you'll never need it again.
+4. Sign in at the **platform admin login** — exact link:
+   `https://navarshabeer768-arch.github.io/vansales-erp-pwa/#/platform-admin/login`
+   (or `http://localhost:5173/platform-admin/login` in dev) — using the
+   same email/password from step 1. Bookmark this; it's never linked
+   from anywhere in the tenant app. `/register` is now closed for
+   everyone but you'll never need it again.
 
 From here on, click **"New company"** inside `/platform-admin` to create
 every future tenant: it creates their login, bootstraps the company, and
