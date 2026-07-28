@@ -1,0 +1,63 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { ToastProvider } from '@/contexts/ToastContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/common/ProtectedRoute';
+import { LoadingScreen } from '@/components/common/LoadingScreen';
+import { PlaceholderPage } from '@/components/common/PlaceholderPage';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { LoginPage } from '@/pages/Auth/LoginPage';
+import { RegisterPage } from '@/pages/Auth/RegisterPage';
+import { DashboardPage } from '@/pages/Dashboard/DashboardPage';
+import { InventoryHomePage } from '@/pages/Inventory/InventoryHomePage';
+import { ProductsPage } from '@/pages/Inventory/ProductsPage';
+import { CatalogSettingsPage } from '@/pages/Inventory/CatalogSettingsPage';
+import { WarehousesPage } from '@/pages/Warehouse/WarehousesPage';
+import { StockPage } from '@/pages/Warehouse/StockPage';
+import { StockAdjustmentPage } from '@/pages/Warehouse/StockAdjustmentPage';
+
+export default function App() {
+  const { loading } = useAuth();
+  if (loading) return <LoadingScreen />;
+
+  return (
+    <ToastProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+
+        <Route element={<ProtectedRoute />}>
+          <Route element={<DashboardLayout />}>
+            <Route index element={<DashboardPage />} />
+
+            <Route path="inventory" element={<InventoryHomePage />}>
+              <Route index element={<ProductsPage />} />
+              <Route path="catalog" element={<CatalogSettingsPage />} />
+            </Route>
+
+            <Route path="warehouse" element={<WarehousesPage />} />
+            <Route path="warehouse/stock/:warehouseId" element={<StockPage />} />
+            <Route path="warehouse/adjustments/:warehouseId" element={<StockAdjustmentPage />} />
+
+            {/* Phase 2+ modules — routed so navigation never 404s, built out next */}
+            <Route path="sales" element={<PlaceholderPage title="Sales / POS" />} />
+            <Route path="van-loading" element={<PlaceholderPage title="Van Loading" />} />
+            <Route path="van-unloading" element={<PlaceholderPage title="Van Unloading" />} />
+            <Route path="routes" element={<PlaceholderPage title="Route Planning" />} />
+            <Route path="visits" element={<PlaceholderPage title="Customer Visits" />} />
+            <Route path="purchases" element={<PlaceholderPage title="Purchases" />} />
+            <Route path="payments" element={<PlaceholderPage title="Payments" />} />
+            <Route path="collections" element={<PlaceholderPage title="Collections" />} />
+            <Route path="returns" element={<PlaceholderPage title="Returns" />} />
+            <Route path="accounting" element={<PlaceholderPage title="Accounting" />} />
+            <Route path="reports" element={<PlaceholderPage title="Reports" />} />
+            <Route path="hr" element={<PlaceholderPage title="HR" />} />
+            <Route path="gps" element={<PlaceholderPage title="GPS Tracking" />} />
+            <Route path="settings" element={<PlaceholderPage title="Settings" />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ToastProvider>
+  );
+}
