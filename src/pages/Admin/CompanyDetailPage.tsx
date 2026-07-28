@@ -46,9 +46,9 @@ export function CompanyDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/platform-admin" className="btn-ghost !px-2 !py-1"><ArrowLeft size={18} /></Link>
+        <Link to="/platform-admin/companies" className="btn-ghost !px-2 !py-1"><ArrowLeft size={18} /></Link>
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-700 text-white">
           <Building2 size={20} />
         </div>

@@ -10,7 +10,11 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { LoginPage } from '@/pages/Auth/LoginPage';
 import { RegisterPage } from '@/pages/Auth/RegisterPage';
 import { PlatformLoginPage } from '@/pages/Admin/PlatformLoginPage';
-import { PlatformAdminPage } from '@/pages/Admin/PlatformAdminPage';
+import { PlatformAdminLayout } from '@/components/layout/PlatformAdminLayout';
+import { PlatformDashboardPage } from '@/pages/Admin/PlatformDashboardPage';
+import { PlatformCompaniesPage } from '@/pages/Admin/PlatformCompaniesPage';
+import { PlatformBranchesPage } from '@/pages/Admin/PlatformBranchesPage';
+import { PlatformStaffPage } from '@/pages/Admin/PlatformStaffPage';
 import { CompanyDetailPage } from '@/pages/Admin/CompanyDetailPage';
 import { DashboardPage } from '@/pages/Dashboard/DashboardPage';
 import { InventoryHomePage } from '@/pages/Inventory/InventoryHomePage';
@@ -50,8 +54,13 @@ export default function App() {
 
         <Route path="/platform-admin/login" element={<PlatformLoginPage />} />
         <Route element={<PlatformProtectedRoute />}>
-          <Route path="/platform-admin" element={<PlatformAdminPage />} />
-          <Route path="/platform-admin/companies/:companyId" element={<CompanyDetailPage />} />
+          <Route path="/platform-admin" element={<PlatformAdminLayout />}>
+            <Route index element={<PlatformDashboardPage />} />
+            <Route path="companies" element={<PlatformCompaniesPage />} />
+            <Route path="companies/:companyId" element={<CompanyDetailPage />} />
+            <Route path="branches" element={<PlatformBranchesPage />} />
+            <Route path="staff" element={<PlatformStaffPage />} />
+          </Route>
         </Route>
 
         <Route element={<ProtectedRoute />}>

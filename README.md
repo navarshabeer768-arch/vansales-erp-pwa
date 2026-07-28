@@ -82,11 +82,20 @@ React + TypeScript + Tailwind + Supabase.
   can be set once at creation (via `/register` or the platform admin's
   "New company"), but don't have to be final — the company edits them
   going forward from here.
-- **Company drill-down** — click any company in `/platform-admin` to see
-  its full profile, change its subscription plan, and view its branches
-  (warehouses) and staff — the same Company → Branches → Staff oversight
-  pattern from the salon SaaS platform, adapted here for warehouses
-  instead of salon locations.
+- **Platform Admin console** now mirrors the salon SaaS master console's
+  workflow — a real sidebar app (Dashboard, Companies, Branches, Staff
+  Accounts) instead of one flat page:
+  - **Dashboard**: cross-tenant KPIs (total/active/pending companies,
+    total branches, total staff, total products).
+  - **Companies**: the approve/suspend/new-company flow from before.
+  - **Branches**: every warehouse across every company in one table,
+    with an **Add Branch** button that lets you create a branch for any
+    company directly — no need to log into that tenant — via a new
+    `create_branch_for_company()` RPC (platform-admin-gated, same
+    pattern as every other privileged RPC in this app).
+  - **Staff Accounts**: every staff member across every company, for
+    oversight (read-only — editing staff still happens inside each
+    company).
 
 Every other module (Payments, Reports, HR, GPS Tracking, Settings) has
 a route stubbed in `App.tsx` so navigation never breaks. Payments is
@@ -122,7 +131,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0015). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0016). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 ### 2. Configure environment

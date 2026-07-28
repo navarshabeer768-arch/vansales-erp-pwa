@@ -1,24 +1,19 @@
 import { useState } from 'react';
-import { Navigate, Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Check, Ban, Eye, Plus, LogOut } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
+import { Check, Ban, Eye, Plus } from 'lucide-react';
 import { useAllCompanies, CompanyRow } from '@/hooks/useAllCompanies';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/contexts/ToastContext';
 import { NewCompanyModal } from './NewCompanyModal';
 
-export function PlatformAdminPage() {
-  const { isPlatformAdmin, loading: authLoading, signOut } = useAuth();
-  const navigate = useNavigate();
+export function PlatformCompaniesPage() {
   const { companies, loading, approve, suspend, reload } = useAllCompanies();
   const { push } = useToast();
   const [toApprove, setToApprove] = useState<CompanyRow | null>(null);
   const [toSuspend, setToSuspend] = useState<CompanyRow | null>(null);
   const [newCompanyOpen, setNewCompanyOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  if (!authLoading && !isPlatformAdmin) return <Navigate to="/platform-admin/login" replace />;
 
   const handleApprove = async () => {
     if (!toApprove) return;
@@ -72,22 +67,16 @@ export function PlatformAdminPage() {
   const pendingCount = companies.filter((c) => !c.is_active).length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 p-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-700 text-white">
-          <ShieldCheck size={20} />
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Platform Admin</h1>
+          <h1 className="text-xl font-bold text-slate-800">Companies</h1>
           <p className="text-sm text-slate-500">
             {pendingCount > 0 ? `${pendingCount} registration${pendingCount === 1 ? '' : 's'} awaiting approval` : 'All companies reviewed'}
           </p>
         </div>
-        <button className="btn-primary ml-auto" onClick={() => setNewCompanyOpen(true)}>
+        <button className="btn-primary" onClick={() => setNewCompanyOpen(true)}>
           <Plus size={16} /> New company
-        </button>
-        <button className="btn-secondary" onClick={async () => { await signOut(); navigate('/platform-admin/login'); }}>
-          <LogOut size={16} /> Sign out
         </button>
       </div>
 
