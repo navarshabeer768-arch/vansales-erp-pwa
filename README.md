@@ -3,7 +3,7 @@
 Multi-tenant, offline-capable Van Sales / FMCG distribution platform.
 React + TypeScript + Tailwind + Supabase.
 
-## Status: Phase 2 complete (Foundation + Inventory/Warehouse + Van Loading/Unloading)
+## Status: Phase 3 complete (Foundation + Inventory/Warehouse + Van Loading/Unloading + Sales/POS)
 
 **Foundation (this phase):**
 - Full multi-tenant Postgres/Supabase schema (companies, roles/permissions,
@@ -28,15 +28,38 @@ React + TypeScript + Tailwind + Supabase.
   `approve_van_loading` (warehouse → van); unloading sheets that split
   returned van stock into remaining/customer-return (back to warehouse)
   vs damaged/expired (written off), approved via `approve_van_unloading`.
+- **Fully working module: Sales / POS** — barcode/name search against
+  live van stock, cart with per-line discount and free-item support,
+  multi-method split payments, cash/credit/POS sale types, customer
+  quick-add. The entire sale (header + items + payments + stock
+  deduction + customer balance) is created by a single atomic
+  `create_sale` Postgres function — either the whole thing commits or
+  none of it does. Offline-first: if the network is down, the sale is
+  queued in IndexedDB (Dexie) and auto-synced (idempotently, via a
+  client-generated UUID) the moment connectivity returns.
 - PWA: installable, offline-caches Supabase REST reads, auto-updates.
 
-Every other module (Sales/POS, Route Planning, Customer Visits,
-Purchases, Payments, Collections, Returns, Accounting, Reports, HR, GPS
-Tracking, Settings) has a route stubbed in `App.tsx` so navigation never
-breaks, and the underlying schema + RPCs already exist — only the UI
-remains. Build them one at a time, verifying each against real Supabase
-data before moving to the next, the same way Inventory and Van
-Loading/Unloading were built.
+Every other module (Route Planning, Customer Visits, Purchases,
+Payments, Collections, Returns, Accounting, Reports, HR, GPS Tracking,
+Settings) has a route stubbed in `App.tsx` so navigation never breaks,
+and the underlying schema + RPCs already exist — only the UI remains.
+Build them one at a time, verifying each against real Supabase data
+before moving to the next, the same way every module so far was built.
+
+## Live deployment
+
+- **GitHub Pages:** https://navarshabeer768-arch.github.io/vansales-erp-pwa/
+  — deploys automatically on every push to `main` via
+  `.github/workflows/deploy.yml`, using the `VITE_SUPABASE_URL` /
+  `VITE_SUPABASE_ANON_KEY` repository secrets. GitHub Pages has no
+  server, so this build uses `HashRouter` (`VITE_USE_HASH_ROUTER=true`)
+  and a `/vansales-erp-pwa/` base path (`GITHUB_PAGES=true`) — both are
+  build-time env flags set only in the workflow, so a normal
+  `npm run dev`/`npm run build` locally still uses clean URLs at `/`.
+- **Netlify / Vercel:** `netlify.toml` and `vercel.json` are included
+  with SPA rewrite rules for clean, server-rewritten URLs (recommended
+  once you're off GitHub Pages, since it also plays nicer with
+  Supabase's auth-callback URL hash than `HashRouter` does).
 
 ## Getting started
 
@@ -50,7 +73,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0007). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0008). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 ### 2. Configure environment
@@ -108,20 +131,20 @@ grants, and makes you `company_admin`. From there:
 
 ## What's next (build order recommendation)
 
-1. **Sales / POS** — cash/credit sales, barcode entry, split payments,
-   offline queue (IndexedDB via Dexie is already a dependency), deducts
-   van stock via the existing `process_sale` RPC.
-2. **Collections & Returns** — outstanding ledger, receipt printing.
-3. **Route Planning & Customer Visits** — GPS check-in/out, route sequencing.
-4. **Purchases & Accounting** — supplier POs/GRNs, chart of accounts, P&L.
-5. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`.
-6. **PDT hardware layer** — barcode scanning (camera-based, works on any
+1. **Collections & Returns** — outstanding ledger, receipt printing,
+   using the existing `record_collection` RPC and `returns`/`return_items`
+   tables.
+2. **Route Planning & Customer Visits** — GPS check-in/out, route sequencing.
+3. **Purchases & Accounting** — supplier POs/GRNs, chart of accounts, P&L.
+4. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`.
+5. **PDT hardware layer** — barcode scanning (camera-based, works on any
    PDT with a rear camera without native code), Bluetooth/thermal
    printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm
    and A4 templates), GPS polling into `gps_logs`.
 
-Each phase should follow the same pattern used for Inventory and Van
-Loading/Unloading: a typed hook per entity, a form with `zod` validation,
-a `DataTable`-backed list page, permission gates on every mutating
-action, and — for anything touching stock or money — a `security
-definer` Postgres function rather than raw client-side `update()` calls.
+Each phase should follow the same pattern used so far: a typed hook per
+entity, a form with `zod` validation, a `DataTable`-backed list page,
+permission gates on every mutating action, and — for anything touching
+stock or money — a single atomic `security definer` Postgres function
+(see `create_sale` for the fullest example) rather than composing the
+operation from several separate client-side calls.
