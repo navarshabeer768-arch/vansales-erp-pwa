@@ -3,7 +3,7 @@
 Multi-tenant, offline-capable Van Sales / FMCG distribution platform.
 React + TypeScript + Tailwind + Supabase.
 
-## Status: Phase 4 complete (Foundation + Inventory/Warehouse + Van Loading/Unloading + Sales/POS + Collections/Returns)
+## Status: Phase 5 complete (Foundation + Inventory/Warehouse + Van Loading/Unloading + Sales/POS + Collections/Returns + Route Planning/Customer Visits)
 
 **Foundation (this phase):**
 - Full multi-tenant Postgres/Supabase schema (companies, roles/permissions,
@@ -44,14 +44,20 @@ React + TypeScript + Tailwind + Supabase.
   warehouse or van and credits the customer via `approve_return`) and
   purchase returns (de-stocks a warehouse being sent back to a
   supplier) — both atomic and logged to `stock_movements`.
+- **Fully working module: Route Planning & Customer Visits** — routes
+  with an assigned van/salesman and a sequenced customer list; "Start
+  today's visits" bulk-creates the day's planned stops from that
+  sequence; GPS-verified check-in/check-out (via the browser
+  Geolocation API, degrading gracefully with a warning toast if location
+  access is denied) with visit notes and a missed-visit path.
 - PWA: installable, offline-caches Supabase REST reads, auto-updates.
 
-Every other module (Route Planning, Customer Visits, Purchases,
-Payments, Accounting, Reports, HR, GPS Tracking, Settings) has a route
-stubbed in `App.tsx` so navigation never breaks, and the underlying
-schema + RPCs already exist — only the UI remains. Build them one at a
-time, verifying each against real Supabase data before moving to the
-next, the same way every module so far was built.
+Every other module (Purchases, Payments, Accounting, Reports, HR, GPS
+Tracking, Settings) has a route stubbed in `App.tsx` so navigation never
+breaks, and the underlying schema already exists — only the UI (and, for
+Purchases/Accounting, a couple of new transactional RPCs) remains. Build
+them one at a time, verifying each against real Supabase data before
+moving to the next, the same way every module so far was built.
 
 ## Live deployment
 
@@ -138,13 +144,16 @@ grants, and makes you `company_admin`. From there:
 
 ## What's next (build order recommendation)
 
-1. **Route Planning & Customer Visits** — GPS check-in/out, route sequencing.
-2. **Purchases & Accounting** — supplier POs/GRNs, chart of accounts, P&L.
-3. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`.
-4. **PDT hardware layer** — barcode scanning (camera-based, works on any
+1. **Purchases & Accounting** — supplier POs/GRNs (atomic goods-receipt
+   RPC that increases warehouse stock, mirroring `approve_van_loading`),
+   chart of accounts, P&L.
+2. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`.
+3. **PDT hardware layer** — barcode scanning (camera-based, works on any
    PDT with a rear camera without native code), Bluetooth/thermal
    printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm
-   and A4 templates), GPS polling into `gps_logs`.
+   and A4 templates), GPS polling into `gps_logs` (the Geolocation
+   pattern from Customer Visits extends directly to a background
+   watchPosition poll for live van tracking).
 
 Each phase should follow the same pattern used so far: a typed hook per
 entity, a form with `zod` validation, a `DataTable`-backed list page,

@@ -23,6 +23,8 @@ import { POSPage } from '@/pages/Sales/POSPage';
 import { SalesHistoryPage } from '@/pages/Sales/SalesHistoryPage';
 import { CollectionsPage } from '@/pages/Collections/CollectionsPage';
 import { ReturnsPage } from '@/pages/Returns/ReturnsPage';
+import { RoutesPage } from '@/pages/Routes/RoutesPage';
+import { VisitsPage } from '@/pages/Routes/VisitsPage';
 
 export default function App() {
   const { loading } = useAuth();
@@ -58,9 +60,9 @@ export default function App() {
               <Route path="history" element={<SalesHistoryPage />} />
             </Route>
 
-            {/* Phase 4+ modules — routed so navigation never 404s, built out next */}
-            <Route path="routes" element={<PlaceholderPage title="Route Planning" />} />
-            <Route path="visits" element={<PlaceholderPage title="Customer Visits" />} />
+            {/* Phase 6+ modules — routed so navigation never 404s, built out next */}
+            <Route path="routes" element={<RoutesPage />} />
+            <Route path="visits" element={<VisitsPage />} />
             <Route path="purchases" element={<PlaceholderPage title="Purchases" />} />
             <Route path="payments" element={<PlaceholderPage title="Payments" />} />
             <Route path="collections" element={<CollectionsPage />} />
