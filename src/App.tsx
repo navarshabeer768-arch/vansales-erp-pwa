@@ -25,6 +25,12 @@ import { CollectionsPage } from '@/pages/Collections/CollectionsPage';
 import { ReturnsPage } from '@/pages/Returns/ReturnsPage';
 import { RoutesPage } from '@/pages/Routes/RoutesPage';
 import { VisitsPage } from '@/pages/Routes/VisitsPage';
+import { PurchasesHomePage } from '@/pages/Purchases/PurchasesHomePage';
+import { PurchaseOrdersPage } from '@/pages/Purchases/PurchaseOrdersPage';
+import { GoodsReceiptsPage } from '@/pages/Purchases/GoodsReceiptsPage';
+import { AccountingHomePage } from '@/pages/Accounting/AccountingHomePage';
+import { PLSummaryPage } from '@/pages/Accounting/PLSummaryPage';
+import { ExpensesPage } from '@/pages/Accounting/ExpensesPage';
 
 export default function App() {
   const { loading } = useAuth();
@@ -60,16 +66,22 @@ export default function App() {
               <Route path="history" element={<SalesHistoryPage />} />
             </Route>
 
-            {/* Phase 6+ modules — routed so navigation never 404s, built out next */}
             <Route path="routes" element={<RoutesPage />} />
             <Route path="visits" element={<VisitsPage />} />
-            <Route path="purchases" element={<PlaceholderPage title="Purchases" />} />
+            <Route path="purchases" element={<PurchasesHomePage />}>
+              <Route index element={<PurchaseOrdersPage />} />
+              <Route path="receipts" element={<GoodsReceiptsPage />} />
+            </Route>
             <Route path="payments" element={<PlaceholderPage title="Payments" />} />
             <Route path="collections" element={<CollectionsPage />} />
             <Route path="returns" element={<ReturnsPage />} />
 
-            {/* Phase 5+ modules — routed so navigation never 404s, built out next */}
-            <Route path="accounting" element={<PlaceholderPage title="Accounting" />} />
+            <Route path="accounting" element={<AccountingHomePage />}>
+              <Route index element={<PLSummaryPage />} />
+              <Route path="expenses" element={<ExpensesPage />} />
+            </Route>
+
+            {/* Phase 7+ modules — routed so navigation never 404s, built out next */}
             <Route path="reports" element={<PlaceholderPage title="Reports" />} />
             <Route path="hr" element={<PlaceholderPage title="HR" />} />
             <Route path="gps" element={<PlaceholderPage title="GPS Tracking" />} />

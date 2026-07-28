@@ -3,7 +3,7 @@
 Multi-tenant, offline-capable Van Sales / FMCG distribution platform.
 React + TypeScript + Tailwind + Supabase.
 
-## Status: Phase 5 complete (Foundation + Inventory/Warehouse + Van Loading/Unloading + Sales/POS + Collections/Returns + Route Planning/Customer Visits)
+## Status: Phase 6 complete (Foundation + Inventory/Warehouse + Van Loading/Unloading + Sales/POS + Collections/Returns + Route Planning/Customer Visits + Purchases/Accounting)
 
 **Foundation (this phase):**
 - Full multi-tenant Postgres/Supabase schema (companies, roles/permissions,
@@ -50,14 +50,26 @@ React + TypeScript + Tailwind + Supabase.
   sequence; GPS-verified check-in/check-out (via the browser
   Geolocation API, degrading gracefully with a warning toast if location
   access is denied) with visit notes and a missed-visit path.
+- **Fully working module: Purchases & Accounting** — purchase orders with
+  line items; goods receipts (standalone or against an open PO, with
+  batch/expiry capture) that atomically increase warehouse stock via a
+  new `receive_goods` RPC, auto-creating batch records and rolling the
+  PO's status to partially/fully received; expense tracking; and a
+  computed Profit & Loss summary (revenue, discounts, estimated COGS,
+  operating expenses, net) over any date range.
 - PWA: installable, offline-caches Supabase REST reads, auto-updates.
+- **Company registration** is a full SaaS-style onboarding form —
+  company profile (phone, address, currency, tax number) and admin
+  account together in one step, with a graceful "check your email"
+  state if email confirmation is required by your Supabase Auth
+  settings.
 
-Every other module (Purchases, Payments, Accounting, Reports, HR, GPS
-Tracking, Settings) has a route stubbed in `App.tsx` so navigation never
-breaks, and the underlying schema already exists — only the UI (and, for
-Purchases/Accounting, a couple of new transactional RPCs) remains. Build
-them one at a time, verifying each against real Supabase data before
-moving to the next, the same way every module so far was built.
+Every other module (Payments, Reports, HR, GPS Tracking, Settings) has
+a route stubbed in `App.tsx` so navigation never breaks. Payments is
+largely covered already by Collections (customer-side) and Goods
+Receipts (supplier-side cost is captured there); a dedicated Payments
+module would mainly add supplier-payment tracking against
+`supplier_payments`, which already exists in the schema.
 
 ## Live deployment
 
@@ -86,7 +98,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0009). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0011). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 ### 2. Configure environment
@@ -144,10 +156,15 @@ grants, and makes you `company_admin`. From there:
 
 ## What's next (build order recommendation)
 
-1. **Purchases & Accounting** — supplier POs/GRNs (atomic goods-receipt
-   RPC that increases warehouse stock, mirroring `approve_van_loading`),
-   chart of accounts, P&L.
-2. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`.
+1. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`;
+   extend it with the report list from the original spec (sales by
+   salesman/route/customer, inventory/expiry/damage reports, stock
+   movement ledger) as filtered views over tables that already exist.
+2. **Payments** (supplier-side) — a thin CRUD over the existing
+   `supplier_payments` table, plus reducing whatever payable balance you
+   choose to track (the schema doesn't currently accrue an AP balance
+   the way `customers.outstanding_balance` does for AR — add that column
+   if you want supplier payments to net against it automatically).
 3. **PDT hardware layer** — barcode scanning (camera-based, works on any
    PDT with a rear camera without native code), Bluetooth/thermal
    printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm

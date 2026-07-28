@@ -15,6 +15,7 @@ interface AuthContextValue extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpCompany: (params: {
     companyName: string; slug: string; fullName: string; email: string; password: string;
+    companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string; adminPhone?: string;
   }) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   can: (permissionCode: string) => boolean;
@@ -98,9 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUpCompany = useCallback(
-    async ({ companyName, slug, fullName, email, password }: {
+    async (params: {
       companyName: string; slug: string; fullName: string; email: string; password: string;
+      companyPhone?: string; companyAddress?: string; currency?: string; taxNumber?: string; adminPhone?: string;
     }) => {
+      const { companyName, slug, fullName, email, password, companyPhone, companyAddress, currency, taxNumber, adminPhone } = params;
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
       if (signUpError || !signUpData.user) {
         return { error: signUpError?.message ?? 'Sign up failed' };
@@ -112,6 +115,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         p_admin_user_id: signUpData.user.id,
         p_admin_full_name: fullName,
         p_admin_email: email,
+        p_company_phone: companyPhone ?? null,
+        p_company_address: companyAddress ?? null,
+        p_currency: currency ?? 'QAR',
+        p_tax_number: taxNumber ?? null,
+        p_admin_phone: adminPhone ?? null,
       });
 
       if (bootstrapError) {
