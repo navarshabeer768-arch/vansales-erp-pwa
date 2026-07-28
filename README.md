@@ -3,7 +3,7 @@
 Multi-tenant, offline-capable Van Sales / FMCG distribution platform.
 React + TypeScript + Tailwind + Supabase.
 
-## Status: Phase 1 complete
+## Status: Phase 2 complete (Foundation + Inventory/Warehouse + Van Loading/Unloading)
 
 **Foundation (this phase):**
 - Full multi-tenant Postgres/Supabase schema (companies, roles/permissions,
@@ -22,15 +22,21 @@ React + TypeScript + Tailwind + Supabase.
   brands/units/suppliers, warehouses, live stock-by-batch view with
   expiry alerts, and a stock count/damage/loss adjustment workflow with
   an approval step that atomically updates stock via the RPC layer.
+- **Fully working module: Van Loading & Unloading** — van fleet CRUD
+  (driver/salesman assignment, home warehouse); loading sheets built from
+  live warehouse stock with over-stock validation, approved atomically via
+  `approve_van_loading` (warehouse → van); unloading sheets that split
+  returned van stock into remaining/customer-return (back to warehouse)
+  vs damaged/expired (written off), approved via `approve_van_unloading`.
 - PWA: installable, offline-caches Supabase REST reads, auto-updates.
 
-Every other module (Sales/POS, Van Loading/Unloading UI, Route Planning,
-Customer Visits, Purchases, Payments, Collections, Returns, Accounting,
-Reports, HR, GPS Tracking, Settings) has a route stubbed in `App.tsx` so
-navigation never breaks, and the underlying schema + RPCs already exist —
-only the UI remains. Build them one at a time, verifying each against
-real Supabase data before moving to the next, the same way the Inventory
-module was built.
+Every other module (Sales/POS, Route Planning, Customer Visits,
+Purchases, Payments, Collections, Returns, Accounting, Reports, HR, GPS
+Tracking, Settings) has a route stubbed in `App.tsx` so navigation never
+breaks, and the underlying schema + RPCs already exist — only the UI
+remains. Build them one at a time, verifying each against real Supabase
+data before moving to the next, the same way Inventory and Van
+Loading/Unloading were built.
 
 ## Getting started
 
@@ -102,21 +108,20 @@ grants, and makes you `company_admin`. From there:
 
 ## What's next (build order recommendation)
 
-1. **Van Loading / Van Unloading UI** — the schema and approval RPCs
-   already exist; this unlocks stock ever reaching a van.
-2. **Sales / POS** — cash/credit sales, barcode entry, split payments,
-   offline queue (IndexedDB via Dexie is already a dependency).
-3. **Collections & Returns** — outstanding ledger, receipt printing.
-4. **Route Planning & Customer Visits** — GPS check-in/out, route sequencing.
-5. **Purchases & Accounting** — supplier POs/GRNs, chart of accounts, P&L.
-6. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`.
-7. **PDT hardware layer** — barcode scanning (camera-based, works on any
+1. **Sales / POS** — cash/credit sales, barcode entry, split payments,
+   offline queue (IndexedDB via Dexie is already a dependency), deducts
+   van stock via the existing `process_sale` RPC.
+2. **Collections & Returns** — outstanding ledger, receipt printing.
+3. **Route Planning & Customer Visits** — GPS check-in/out, route sequencing.
+4. **Purchases & Accounting** — supplier POs/GRNs, chart of accounts, P&L.
+5. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`.
+6. **PDT hardware layer** — barcode scanning (camera-based, works on any
    PDT with a rear camera without native code), Bluetooth/thermal
    printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm
    and A4 templates), GPS polling into `gps_logs`.
 
-Each phase should follow the same pattern used for Inventory: a typed
-hook per entity, a form with `zod` validation, a `DataTable`-backed list
-page, permission gates on every mutating action, and — for anything
-touching stock or money — a `security definer` Postgres function rather
-than raw client-side `update()` calls.
+Each phase should follow the same pattern used for Inventory and Van
+Loading/Unloading: a typed hook per entity, a form with `zod` validation,
+a `DataTable`-backed list page, permission gates on every mutating
+action, and — for anything touching stock or money — a `security
+definer` Postgres function rather than raw client-side `update()` calls.
