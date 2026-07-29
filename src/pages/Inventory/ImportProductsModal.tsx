@@ -34,15 +34,28 @@ export function ImportProductsModal({ open, onClose, onImported }: { open: boole
 
   const reset = () => { setParsedRows([]); setResult(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
 
-  const downloadTemplate = () => {
+  const downloadCsvTemplate = () => {
     exportRowsToCsv('product-import-template', TEMPLATE_HEADERS, [
       ['SKU-001', 'Sample Product', 'Optional description', '', '', '', 'PC', '5.00', '8.00', '', '', '0', '10', ''],
     ]);
   };
 
+  const downloadExcelTemplate = async () => {
+    const { exportRowsToExcel } = await import('@/lib/excelIO');
+    exportRowsToExcel('product-import-template', TEMPLATE_HEADERS, [
+      ['SKU-001', 'Sample Product', 'Optional description', '', '', '', 'PC', '5.00', '8.00', '', '', '0', '10', ''],
+    ]);
+  };
+
   const handleFile = async (file: File) => {
-    const text = await file.text();
-    const csvRows = parseCsv(text);
+    const isExcel = /\.xlsx?$/i.test(file.name);
+    let csvRows: Record<string, string>[];
+    if (isExcel) {
+      const { parseExcelFile } = await import('@/lib/excelIO');
+      csvRows = await parseExcelFile(file);
+    } else {
+      csvRows = parseCsv(await file.text());
+    }
     if (csvRows.length === 0) {
       push('error', 'That file has no data rows.');
       return;
@@ -95,7 +108,7 @@ export function ImportProductsModal({ open, onClose, onImported }: { open: boole
   };
 
   return (
-    <Modal open={open} onClose={() => { reset(); onClose(); }} title="Import products from CSV" size="lg">
+    <Modal open={open} onClose={() => { reset(); onClose(); }} title="Import products from CSV / Excel" size="lg">
       <div className="space-y-4">
         {!result && (
           <>
@@ -103,15 +116,20 @@ export function ImportProductsModal({ open, onClose, onImported }: { open: boole
               <span className="text-slate-600 dark:text-slate-300">
                 Need the format? Download a template with the right columns.
               </span>
-              <button className="btn-secondary !py-1.5" onClick={downloadTemplate}>
-                <Download size={14} /> Template
-              </button>
+              <div className="flex gap-2">
+                <button className="btn-secondary !py-1.5" onClick={downloadCsvTemplate}>
+                  <Download size={14} /> CSV
+                </button>
+                <button className="btn-secondary !py-1.5" onClick={downloadExcelTemplate}>
+                  <Download size={14} /> Excel
+                </button>
+              </div>
             </div>
 
             <div>
-              <label className="label">CSV file</label>
+              <label className="label">CSV or Excel file</label>
               <input
-                ref={fileInputRef} type="file" accept=".csv" className="input"
+                ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="input"
                 onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
               />
               <p className="mt-1 text-xs text-slate-500">

@@ -109,7 +109,7 @@ export function ProductsPage() {
         <PermissionGate permission="inventory:create">
           <div className="flex gap-2">
             <button className="btn-secondary" onClick={() => setImportOpen(true)}>
-              <Upload size={16} /> Import CSV
+              <Upload size={16} /> Import
             </button>
             <button className="btn-primary" onClick={openCreate}>
               <Plus size={16} /> New product

@@ -1,5 +1,5 @@
 import { useMemo, useState, ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, Search, ArrowUpDown, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, ArrowUpDown, Download, FileSpreadsheet } from 'lucide-react';
 import { exportRowsToCsv } from '@/lib/csvExport';
 
 export interface Column<T> {
@@ -64,7 +64,7 @@ export function DataTable<T>({
     }
   };
 
-  const handleExport = () => {
+  const getExportData = () => {
     const exportableColumns = columns.filter((c) => c.key !== 'actions');
     const headers = exportableColumns.map((c) => c.header || c.key);
     const csvRows = sorted.map((row) =>
@@ -75,7 +75,18 @@ export function DataTable<T>({
         return typeof raw === 'string' || typeof raw === 'number' ? raw : '';
       })
     );
+    return { headers, csvRows };
+  };
+
+  const handleExportCsv = () => {
+    const { headers, csvRows } = getExportData();
     exportRowsToCsv(exportFilename ?? 'export', headers, csvRows);
+  };
+
+  const handleExportExcel = async () => {
+    const { headers, csvRows } = getExportData();
+    const { exportRowsToExcel } = await import('@/lib/excelIO');
+    exportRowsToExcel(exportFilename ?? 'export', headers, csvRows);
   };
 
   return (
@@ -97,9 +108,14 @@ export function DataTable<T>({
             {sorted.length} record{sorted.length === 1 ? '' : 's'}
           </span>
           {exportFilename && sorted.length > 0 && (
-            <button className="btn-secondary !py-1.5 ml-auto" onClick={handleExport}>
-              <Download size={14} /> Export CSV
-            </button>
+            <div className="ml-auto flex gap-1">
+              <button className="btn-secondary !py-1.5" onClick={handleExportCsv}>
+                <Download size={14} /> CSV
+              </button>
+              <button className="btn-secondary !py-1.5" onClick={handleExportExcel}>
+                <FileSpreadsheet size={14} /> Excel
+              </button>
+            </div>
           )}
         </div>
       )}
