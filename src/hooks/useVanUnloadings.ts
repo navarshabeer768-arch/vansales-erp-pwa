@@ -99,7 +99,7 @@ export function useVanStock(vanId: string | null) {
   const { company } = useAuth();
   const [stock, setStock] = useState<{
     id: string; product_id: string; batch_id: string | null; quantity: number;
-    product?: { id: string; name: string; sku: string };
+    product?: { id: string; name: string; sku: string; barcode: string | null };
     batch?: { id: string; batch_no: string; expiry_date: string | null } | null;
   }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,7 +109,7 @@ export function useVanStock(vanId: string | null) {
     setLoading(true);
     const { data } = await supabase
       .from('van_stock')
-      .select('id, product_id, batch_id, quantity, product:products(id,name,sku), batch:batches(id,batch_no,expiry_date)')
+      .select('id, product_id, batch_id, quantity, product:products(id,name,sku,barcode), batch:batches(id,batch_no,expiry_date)')
       .eq('company_id', company.id)
       .eq('van_id', vanId)
       .gt('quantity', 0);

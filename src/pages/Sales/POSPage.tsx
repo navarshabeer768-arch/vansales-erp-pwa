@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { Search, Trash2, Plus, UserPlus, WifiOff } from 'lucide-react';
+import { Search, Trash2, Plus, UserPlus, WifiOff, ScanLine } from 'lucide-react';
 import { useVans } from '@/hooks/useVans';
 import { useVanStock } from '@/hooks/useVanUnloadings';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -7,6 +7,7 @@ import { useCreateSale, CartItem, PaymentEntry, calculateCartTotals, useOfflineS
 import { useToast } from '@/contexts/ToastContext';
 import { Modal } from '@/components/ui/Modal';
 import { supabase } from '@/lib/supabase';
+import { BarcodeScannerModal, isBarcodeScanningSupported } from '@/components/pos/BarcodeScannerModal';
 
 const PAYMENT_METHODS: PaymentEntry['method'][] = ['cash', 'card', 'bank', 'upi', 'wallet', 'cheque'];
 
@@ -64,6 +65,7 @@ export function POSPage() {
   const [search, setSearch] = useState('');
   const [payments, setPayments] = useState<PaymentEntry[]>([{ method: 'cash', amount: 0 }]);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const priceCache = useRef<Map<string, { price: number; tax: number }>>(new Map());
 
@@ -113,6 +115,16 @@ export function POSPage() {
     });
     setSearch('');
     searchRef.current?.focus();
+  };
+
+  const handleBarcodeDetected = (code: string) => {
+    setScannerOpen(false);
+    const match = vanStock.find((s) => s.product?.barcode && s.product.barcode === code);
+    if (!match) {
+      push('error', `No product on this van matches barcode ${code}.`);
+      return;
+    }
+    handleAdd(match.id);
   };
 
   const updateCartItem = (idx: number, patch: Partial<CartItem>) =>
@@ -205,19 +217,29 @@ export function POSPage() {
 
         <div className="card p-4">
           <label className="label">Scan barcode or search product</label>
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              ref={searchRef}
-              className="input pl-9"
-              placeholder={vanId ? 'Type product name, SKU, or scan barcode…' : 'Select a van first'}
-              value={search}
-              disabled={!vanId}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && matches.length > 0) handleAdd(matches[0].id);
-              }}
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                ref={searchRef}
+                className="input pl-9"
+                placeholder={vanId ? 'Type product name, SKU, or scan barcode…' : 'Select a van first'}
+                value={search}
+                disabled={!vanId}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && matches.length > 0) handleAdd(matches[0].id);
+                }}
+              />
+            </div>
+            {isBarcodeScanningSupported() && (
+              <button
+                type="button" className="btn-secondary shrink-0" disabled={!vanId}
+                onClick={() => setScannerOpen(true)} title="Scan with camera"
+              >
+                <ScanLine size={16} />
+              </button>
+            )}
           </div>
           {matches.length > 0 && (
             <ul className="mt-2 divide-y divide-slate-100 rounded-lg border border-slate-200 dark:divide-slate-800 dark:border-slate-700">
@@ -332,6 +354,12 @@ export function POSPage() {
         open={quickAddOpen}
         onClose={() => setQuickAddOpen(false)}
         onCreated={(id) => { setCustomerId(id); reloadCustomers(); }}
+      />
+
+      <BarcodeScannerModal
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onDetected={handleBarcodeDetected}
       />
     </div>
   );

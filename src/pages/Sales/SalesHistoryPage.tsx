@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Printer, Bluetooth } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useSales, Sale } from '@/hooks/useSales';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/contexts/ToastContext';
+import { printReceiptViaBrowser, printReceiptViaBluetooth, isBluetoothPrintingSupported } from '@/lib/bluetoothPrint';
 
 interface SaleItemRow {
   id: string; product_id: string; quantity: number; unit_price: number;
@@ -16,6 +19,9 @@ function SaleDetailModal({ sale, onClose }: { sale: Sale | null; onClose: () => 
   const [items, setItems] = useState<SaleItemRow[]>([]);
   const [payments, setPayments] = useState<SalePaymentRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const { company } = useAuth();
+  const { push } = useToast();
+  const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     if (!sale) return;
@@ -31,10 +37,53 @@ function SaleDetailModal({ sale, onClose }: { sale: Sale | null; onClose: () => 
     })();
   }, [sale]);
 
+  const buildReceiptData = () => {
+    if (!sale) return null;
+    return {
+      companyName: company?.name ?? 'Van Sales',
+      storeId: company?.store_id ?? '—',
+      invoiceNo: sale.invoice_no,
+      createdAt: sale.created_at,
+      customerName: sale.customer?.business_name ?? 'Walk-in',
+      items: items.map((it) => ({ name: it.product?.name ?? '—', quantity: it.quantity, unitPrice: it.unit_price, lineTotal: it.line_total })),
+      subtotal: sale.subtotal, discount: sale.discount_amount, tax: sale.tax_amount,
+      total: sale.total_amount, paid: sale.paid_amount, balance: sale.balance_amount,
+    };
+  };
+
+  const handlePrintBluetooth = async () => {
+    const data = buildReceiptData();
+    if (!data) return;
+    setPrinting(true);
+    try {
+      await printReceiptViaBluetooth(data);
+      push('success', 'Sent to printer.');
+    } catch (err) {
+      push('error', err instanceof Error ? err.message : 'Failed to print.');
+    }
+    setPrinting(false);
+  };
+
+  const handlePrintBrowser = () => {
+    const data = buildReceiptData();
+    if (!data) return;
+    printReceiptViaBrowser(data);
+  };
+
   return (
     <Modal open={!!sale} onClose={onClose} title={sale ? `Invoice ${sale.invoice_no}` : ''} size="lg">
       {sale && (
         <div className="space-y-4">
+          <div className="flex justify-end gap-2">
+            {isBluetoothPrintingSupported() && (
+              <button className="btn-secondary" onClick={handlePrintBluetooth} disabled={printing || loading}>
+                <Bluetooth size={16} /> {printing ? 'Printing…' : 'Print (thermal)'}
+              </button>
+            )}
+            <button className="btn-secondary" onClick={handlePrintBrowser} disabled={loading}>
+              <Printer size={16} /> Print (A4)
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
             <div><p className="text-slate-500">Customer</p><p className="font-medium">{sale.customer?.business_name ?? 'Walk-in'}</p></div>
             <div><p className="text-slate-500">Van</p><p className="font-medium">{sale.van?.name ?? '—'}</p></div>

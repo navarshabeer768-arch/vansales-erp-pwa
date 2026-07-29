@@ -132,13 +132,29 @@ React + TypeScript + Tailwind + Supabase.
   just received), and a `pay_supplier()` RPC atomically records a
   payment and reduces it. Payments page shows every supplier with a
   balance due, a Pay flow, and payment history.
+- **Fully working: PDT hardware layer**
+  - **Barcode scanning** — camera-based (browser `BarcodeDetector` API),
+    works on any device with a rear camera and Chrome/Edge, no native
+    app needed. Wired into POS: tap the scan icon next to product
+    search, point at a barcode, it adds straight to the cart. Falls
+    back to a clear "type it instead" message on unsupported browsers
+    (Safari/iOS, Firefox).
+  - **Thermal receipt printing** — `src/lib/escpos.ts` builds real
+    ESC/POS byte commands (58mm/80mm) for a formatted receipt;
+    `src/lib/bluetoothPrint.ts` sends them over Web Bluetooth to a
+    paired thermal printer. An A4 browser-print fallback (no pairing
+    needed) is always available alongside it from Sales History →
+    any invoice.
+  - **Live GPS tracking** — a driver/salesman can toggle "Share my
+    location" for their assigned van; position uploads are throttled to
+    ~1 per 15 seconds via `watchPosition`, updating both `vans` (latest
+    position) and `gps_logs` (full trail). The GPS Tracking page shows
+    every van's last-known position with a live indicator and a
+    one-tap Google Maps link.
 
-Every other module (HR, GPS Tracking) has a route stubbed in
-`App.tsx` so navigation never breaks. Payments is
-largely covered already by Collections (customer-side) and Goods
-Receipts (supplier-side cost is captured there); a dedicated Payments
-module would mainly add supplier-payment tracking against
-`supplier_payments`, which already exists in the schema.
+Only **HR** (thin CRUD beyond what signup/platform admin already
+covers) has a route stubbed in `App.tsx` — everything else from the
+original spec is now built.
 
 ## Live deployment
 
@@ -282,16 +298,12 @@ active, log in as that company and:
 
 ## What's next (build order recommendation)
 
-1. **PDT hardware layer** — barcode scanning (camera-based, works on any
-   PDT with a rear camera without native code), Bluetooth/thermal
-   printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm
-   and A4 templates), live GPS tracking into `gps_logs` (the
-   Geolocation pattern from Customer Visits extends directly to a
-   background `watchPosition` poll for live van tracking on a map).
-2. **HR module** — thin CRUD over `app_users` (currently only
+1. **HR module** — thin CRUD over `app_users` (currently only
    creatable via signup/platform admin) plus whatever HR fields you
    want to track beyond role/employee_code (attendance, leave,
    payroll are not in the schema yet and would need new tables).
+2. Platform admin / SaaS polish, per your earlier notes — revisit
+   whenever you're ready.
 3. **PDT hardware layer** — barcode scanning (camera-based, works on any
    PDT with a rear camera without native code), Bluetooth/thermal
    printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm

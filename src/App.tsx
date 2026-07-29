@@ -33,6 +33,7 @@ import { SalesHistoryPage } from '@/pages/Sales/SalesHistoryPage';
 import { CollectionsPage } from '@/pages/Collections/CollectionsPage';
 import { ReturnsPage } from '@/pages/Returns/ReturnsPage';
 import { PaymentsPage } from '@/pages/Payments/PaymentsPage';
+import { GpsTrackingPage } from '@/pages/Gps/GpsTrackingPage';
 import { RoutesPage } from '@/pages/Routes/RoutesPage';
 import { VisitsPage } from '@/pages/Routes/VisitsPage';
 import { PurchasesHomePage } from '@/pages/Purchases/PurchasesHomePage';
@@ -113,7 +114,7 @@ export default function App() {
               </Suspense>
             } />
             <Route path="hr" element={<PlaceholderPage title="HR" />} />
-            <Route path="gps" element={<PlaceholderPage title="GPS Tracking" />} />
+            <Route path="gps" element={<GpsTrackingPage />} />
             <Route path="settings" element={<CompanySettingsPage />} />
             </Route>
           </Route>
