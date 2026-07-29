@@ -126,8 +126,15 @@ React + TypeScript + Tailwind + Supabase.
   as filtered views over data that already exists (sales, sale_items,
   warehouse_stock, batches).
 
-Every other module (Payments, HR, GPS Tracking) has a route
-stubbed in `App.tsx` so navigation never breaks. Payments is
+- **Fully working module: Payments** (supplier-side) — mirrors
+  Collections on the AR side: `suppliers.outstanding_payable` is
+  increased automatically by `receive_goods()` (the cost of what you
+  just received), and a `pay_supplier()` RPC atomically records a
+  payment and reduces it. Payments page shows every supplier with a
+  balance due, a Pay flow, and payment history.
+
+Every other module (HR, GPS Tracking) has a route stubbed in
+`App.tsx` so navigation never breaks. Payments is
 largely covered already by Collections (customer-side) and Goods
 Receipts (supplier-side cost is captured there); a dedicated Payments
 module would mainly add supplier-payment tracking against
@@ -160,7 +167,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0021). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0022). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -275,11 +282,16 @@ active, log in as that company and:
 
 ## What's next (build order recommendation)
 
-1. **Payments** (supplier-side) — a thin CRUD over the existing
-   `supplier_payments` table, plus reducing whatever payable balance you
-   choose to track (the schema doesn't currently accrue an AP balance
-   the way `customers.outstanding_balance` does for AR — add that column
-   if you want supplier payments to net against it automatically).
+1. **PDT hardware layer** — barcode scanning (camera-based, works on any
+   PDT with a rear camera without native code), Bluetooth/thermal
+   printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm
+   and A4 templates), live GPS tracking into `gps_logs` (the
+   Geolocation pattern from Customer Visits extends directly to a
+   background `watchPosition` poll for live van tracking on a map).
+2. **HR module** — thin CRUD over `app_users` (currently only
+   creatable via signup/platform admin) plus whatever HR fields you
+   want to track beyond role/employee_code (attendance, leave,
+   payroll are not in the schema yet and would need new tables).
 3. **PDT hardware layer** — barcode scanning (camera-based, works on any
    PDT with a rear camera without native code), Bluetooth/thermal
    printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm

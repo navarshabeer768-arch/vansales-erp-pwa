@@ -32,6 +32,7 @@ import { POSPage } from '@/pages/Sales/POSPage';
 import { SalesHistoryPage } from '@/pages/Sales/SalesHistoryPage';
 import { CollectionsPage } from '@/pages/Collections/CollectionsPage';
 import { ReturnsPage } from '@/pages/Returns/ReturnsPage';
+import { PaymentsPage } from '@/pages/Payments/PaymentsPage';
 import { RoutesPage } from '@/pages/Routes/RoutesPage';
 import { VisitsPage } from '@/pages/Routes/VisitsPage';
 import { PurchasesHomePage } from '@/pages/Purchases/PurchasesHomePage';
@@ -96,7 +97,7 @@ export default function App() {
               <Route index element={<PurchaseOrdersPage />} />
               <Route path="receipts" element={<GoodsReceiptsPage />} />
             </Route>
-            <Route path="payments" element={<PlaceholderPage title="Payments" />} />
+            <Route path="payments" element={<PaymentsPage />} />
             <Route path="collections" element={<CollectionsPage />} />
             <Route path="returns" element={<ReturnsPage />} />
 
