@@ -41,6 +41,8 @@ import { AccountingHomePage } from '@/pages/Accounting/AccountingHomePage';
 import { PLSummaryPage } from '@/pages/Accounting/PLSummaryPage';
 import { ExpensesPage } from '@/pages/Accounting/ExpensesPage';
 import { CompanySettingsPage } from '@/pages/Settings/CompanySettingsPage';
+import { lazy, Suspense } from 'react';
+const ReportsPage = lazy(() => import('@/pages/Reports/ReportsPage').then((m) => ({ default: m.ReportsPage })));
 
 export default function App() {
   const { loading } = useAuth();
@@ -104,7 +106,11 @@ export default function App() {
             </Route>
 
             {/* Phase 7+ modules — routed so navigation never 404s, built out next */}
-            <Route path="reports" element={<PlaceholderPage title="Reports" />} />
+            <Route path="reports" element={
+              <Suspense fallback={<LoadingScreen label="Loading reports…" />}>
+                <ReportsPage />
+              </Suspense>
+            } />
             <Route path="hr" element={<PlaceholderPage title="HR" />} />
             <Route path="gps" element={<PlaceholderPage title="GPS Tracking" />} />
             <Route path="settings" element={<CompanySettingsPage />} />

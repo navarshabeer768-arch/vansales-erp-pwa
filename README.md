@@ -3,7 +3,7 @@
 Multi-tenant, offline-capable Van Sales / FMCG distribution platform.
 React + TypeScript + Tailwind + Supabase.
 
-## Status: Phase 6 complete (Foundation + Inventory/Warehouse + Van Loading/Unloading + Sales/POS + Collections/Returns + Route Planning/Customer Visits + Purchases/Accounting)
+## Status: Foundation + Inventory/Warehouse + Van Loading/Unloading + Sales/POS + Collections/Returns + Route Planning/Customer Visits + Purchases/Accounting + Reports/Dashboards + full SaaS platform admin
 
 **Foundation (this phase):**
 - Full multi-tenant Postgres/Supabase schema (companies, roles/permissions,
@@ -118,7 +118,15 @@ React + TypeScript + Tailwind + Supabase.
   (Authentication → Providers → Email) — otherwise new accounts get
   stuck waiting on a confirmation email that can never arrive.
 
-Every other module (Payments, Reports, HR, GPS Tracking) has a route
+- **Fully working module: Reports & Dashboards** — a date-range picker
+  driving a sales trend chart (lazy-loaded, so recharts doesn't bloat
+  the main bundle for people who never open Reports), top products, top
+  customers, salesman performance, low-stock alerts, and a 30-day
+  expiry-risk table — covering the report list from the original spec
+  as filtered views over data that already exists (sales, sale_items,
+  warehouse_stock, batches).
+
+Every other module (Payments, HR, GPS Tracking) has a route
 stubbed in `App.tsx` so navigation never breaks. Payments is
 largely covered already by Collections (customer-side) and Goods
 Receipts (supplier-side cost is captured there); a dedicated Payments
@@ -267,11 +275,7 @@ active, log in as that company and:
 
 ## What's next (build order recommendation)
 
-1. **Reports & Dashboards** — the KPI groundwork is in `DashboardPage.tsx`;
-   extend it with the report list from the original spec (sales by
-   salesman/route/customer, inventory/expiry/damage reports, stock
-   movement ledger) as filtered views over tables that already exist.
-2. **Payments** (supplier-side) — a thin CRUD over the existing
+1. **Payments** (supplier-side) — a thin CRUD over the existing
    `supplier_payments` table, plus reducing whatever payable balance you
    choose to track (the schema doesn't currently accrue an AP balance
    the way `customers.outstanding_balance` does for AR — add that column
