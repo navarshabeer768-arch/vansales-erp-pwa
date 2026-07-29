@@ -152,7 +152,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0020). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0021). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -208,12 +208,12 @@ One-time setup:
    ```
 4. Sign in at the **platform admin login** — exact link:
    `https://navarshabeer768-arch.github.io/vansales-erp-pwa/#/platform-admin/login`
-   (or `http://localhost:5173/platform-admin/login` in dev) — using the
-   **Store ID + Username + Password** from step 1 (same three fields as
-   any company login, nothing platform-specific about the credentials
-   themselves). Bookmark this; it's never linked from anywhere in the
-   tenant app. `/register` is now closed for everyone but you'll never
-   need it again.
+   (or `http://localhost:5173/platform-admin/login` in dev) — using just
+   your **Username + Password** from step 1 (no Store ID needed here —
+   that's only required on the regular company login, since platform
+   admins are a small curated list, not thousands of per-store staff).
+   Bookmark this; it's never linked from anywhere in the tenant app.
+   `/register` is now closed for everyone but you'll never need it again.
 
 From here on, click **"New company"** inside `/platform-admin` to create
 every future tenant: it creates their login, bootstraps the company, and
