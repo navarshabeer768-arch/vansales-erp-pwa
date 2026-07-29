@@ -14,13 +14,19 @@
 -- specific custom roles (e.g. "Auditor", "Trainee").
 -- ---------------------------------------------------------------------------
 create table van_staff_roles (
+  id uuid primary key default gen_random_uuid(),
   code text not null,
   company_id uuid references companies(id) on delete cascade, -- null = system role, available to all companies
   label text not null,
   is_system boolean not null default false,
-  created_at timestamptz not null default now(),
-  primary key (code, company_id)
+  created_at timestamptz not null default now()
 );
+
+-- A composite primary key on (code, company_id) would implicitly force
+-- company_id NOT NULL in Postgres, which breaks "null = system role" —
+-- partial unique indexes instead, one for each meaning of company_id.
+create unique index van_staff_roles_system_code_key on van_staff_roles(code) where company_id is null;
+create unique index van_staff_roles_company_code_key on van_staff_roles(code, company_id) where company_id is not null;
 
 insert into van_staff_roles (code, company_id, label, is_system) values
   ('driver', null, 'Driver', true),
