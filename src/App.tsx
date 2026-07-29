@@ -31,6 +31,7 @@ import { VanLoadingHomePage } from '@/pages/Van/VanLoadingHomePage';
 import { VanLoadingPage } from '@/pages/Van/VanLoadingPage';
 import { VansPage } from '@/pages/Van/VansPage';
 import { VanDetailPage } from '@/pages/Van/VanDetailPage';
+import { VanStaffReportPage } from '@/pages/Van/VanStaffReportPage';
 import { VanUnloadingPage } from '@/pages/Van/VanUnloadingPage';
 import { SalesHomePage } from '@/pages/Sales/SalesHomePage';
 import { POSPage } from '@/pages/Sales/POSPage';
@@ -107,6 +108,7 @@ export default function App() {
             <Route path="van-loading" element={<VanLoadingHomePage />}>
               <Route index element={<VanLoadingPage />} />
               <Route path="vans" element={<VansPage />} />
+              <Route path="staff-report" element={<VanStaffReportPage />} />
             </Route>
             <Route path="van-loading/vans/:vanId" element={<VanDetailPage />} />
             <Route path="van-unloading" element={<VanUnloadingPage />} />

@@ -9,8 +9,7 @@ export interface VanPosition {
   current_latitude: number | null;
   current_longitude: number | null;
   last_location_at: string | null;
-  driver?: { full_name: string } | null;
-  salesman?: { full_name: string } | null;
+  staff: { full_name: string; role_code: string }[];
 }
 
 export function useVanPositions() {
@@ -21,12 +20,25 @@ export function useVanPositions() {
   const load = useCallback(async () => {
     if (!company) return;
     setLoading(true);
-    const { data } = await supabase
-      .from('vans')
-      .select('id, name, code, current_latitude, current_longitude, last_location_at, driver:app_users!vans_driver_id_fkey(full_name), salesman:app_users!vans_salesman_id_fkey(full_name)')
-      .eq('company_id', company.id)
-      .order('name');
-    setVans((data ?? []) as unknown as VanPosition[]);
+    const [{ data: vanRows }, { data: staffRows }] = await Promise.all([
+      supabase
+        .from('vans')
+        .select('id, name, code, current_latitude, current_longitude, last_location_at')
+        .eq('company_id', company.id)
+        .order('name'),
+      supabase
+        .from('van_staff_assignments')
+        .select('van_id, role_code, employee:app_users(full_name)')
+        .eq('company_id', company.id)
+        .eq('status', 'active'),
+    ]);
+    const staffByVan = new Map<string, { full_name: string; role_code: string }[]>();
+    for (const s of (staffRows ?? []) as any[]) {
+      const list = staffByVan.get(s.van_id) ?? [];
+      list.push({ full_name: s.employee?.full_name ?? '—', role_code: s.role_code });
+      staffByVan.set(s.van_id, list);
+    }
+    setVans(((vanRows ?? []) as any[]).map((v) => ({ ...v, staff: staffByVan.get(v.id) ?? [] })));
     setLoading(false);
   }, [company]);
 

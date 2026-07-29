@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Users, Target, TrendingUp } from 'lucide-react';
 import { useSalesmen, useSalesmanTargets } from '@/hooks/useSalesmanTargets';
-import { useVans } from '@/hooks/useVans';
+import { useAllActiveVanStaff } from '@/hooks/useVanAssignments';
 import { useRoutes } from '@/hooks/useRoutes';
 import { useReports } from '@/hooks/useReports';
 import { PermissionGate } from '@/components/common/PermissionGate';
@@ -17,7 +17,7 @@ function todayIso() {
 
 export function SalesmanManagementPage() {
   const { salesmen, loading } = useSalesmen();
-  const { vans } = useVans();
+  const { rows: vanStaff } = useAllActiveVanStaff();
   const { routes } = useRoutes();
   const month = monthStartIso();
   const { targets, setTarget } = useSalesmanTargets(month);
@@ -31,7 +31,7 @@ export function SalesmanManagementPage() {
   const [saving, setSaving] = useState(false);
 
   const selected = salesmen.find((s) => s.id === selectedId);
-  const assignedVan = (userId: string) => vans.find((v) => v.salesman_id === userId);
+  const assignedVans = (userId: string) => vanStaff.filter((r) => r.employee_id === userId);
   const assignedRoute = (userId: string) => routes.find((r) => r.salesman_id === userId);
   const targetFor = (userId: string) => targets.find((t) => t.user_id === userId);
   const perfFor = (userId: string) => performance.find((p) => p.salesman_id === userId);
@@ -85,7 +85,7 @@ export function SalesmanManagementPage() {
                   <div>
                     <p className="font-medium">{s.full_name}</p>
                     <p className="text-xs text-slate-500">
-                      {assignedVan(s.id)?.name ?? 'No van'} · {assignedRoute(s.id)?.name ?? 'No route'}
+                      {assignedVans(s.id).length > 0 ? assignedVans(s.id).map((v) => v.van_name).join(', ') : 'No van'} · {assignedRoute(s.id)?.name ?? 'No route'}
                     </p>
                   </div>
                   {perf && <span className="text-xs font-medium text-slate-600">{perf.revenue.toFixed(0)}</span>}

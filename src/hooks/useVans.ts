@@ -22,21 +22,17 @@ export interface Van {
   is_archived: boolean;
   insurance_expiry: string | null;
   home_warehouse_id: string | null;
-  driver_id: string | null;
-  salesman_id: string | null;
   status: 'active' | 'maintenance' | 'inactive';
   created_at: string;
   updated_at: string;
   home_warehouse?: { id: string; name: string } | null;
-  driver?: { id: string; full_name: string } | null;
-  salesman?: { id: string; full_name: string } | null;
 }
 
 export type VanInput = Omit<
-  Van, 'id' | 'company_id' | 'created_at' | 'updated_at' | 'home_warehouse' | 'driver' | 'salesman' | 'is_archived'
+  Van, 'id' | 'company_id' | 'created_at' | 'updated_at' | 'home_warehouse' | 'is_archived'
 >;
 
-const SELECT = '*, home_warehouse:warehouses(id,name), driver:app_users!vans_driver_id_fkey(id,full_name), salesman:app_users!vans_salesman_id_fkey(id,full_name)';
+const SELECT = '*, home_warehouse:warehouses(id,name)';
 
 export function useVans() {
   const { company } = useAuth();

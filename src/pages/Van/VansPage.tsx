@@ -4,7 +4,7 @@ import { Plus, Pencil, Ban, Truck as TruckIcon, ArchiveRestore, Archive as Archi
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useVans, useArchivedVans, useSalesmenAndDrivers, Van, VanInput } from '@/hooks/useVans';
+import { useVans, useArchivedVans, Van, VanInput } from '@/hooks/useVans';
 import { useWarehouses } from '@/hooks/useWarehouses';
 import { supabase } from '@/lib/supabase';
 import { DataTable, Column } from '@/components/ui/DataTable';
@@ -30,8 +30,6 @@ const schema = z.object({
   insurance_expiry: z.string().optional().or(z.literal('')),
   notes: z.string().max(1000).optional().or(z.literal('')),
   home_warehouse_id: z.string().optional().or(z.literal('')),
-  driver_id: z.string().optional().or(z.literal('')),
-  salesman_id: z.string().optional().or(z.literal('')),
   status: z.enum(['active', 'maintenance', 'inactive']),
 });
 type FormValues = z.infer<typeof schema>;
@@ -42,14 +40,13 @@ function VanForm({ initial, onSubmit, onCancel }: {
   onCancel: () => void;
 }) {
   const { warehouses } = useWarehouses();
-  const { drivers, salesmen } = useSalesmenAndDrivers();
   const { register, handleSubmit, reset, formState: { errors, isSubmitting }, setError } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       code: '', name: '', registration_no: '', vin_number: '', chassis_number: '', engine_number: '',
       vehicle_type: '', capacity: '', purchase_date: '', road_permit_no: '', permit_expiry: '',
       registration_expiry: '', insurance_expiry: '', notes: '',
-      home_warehouse_id: '', driver_id: '', salesman_id: '', status: 'active',
+      home_warehouse_id: '', status: 'active',
     },
   });
 
@@ -63,8 +60,7 @@ function VanForm({ initial, onSubmit, onCancel }: {
         purchase_date: initial.purchase_date ?? '', road_permit_no: initial.road_permit_no ?? '',
         permit_expiry: initial.permit_expiry ?? '', registration_expiry: initial.registration_expiry ?? '',
         insurance_expiry: initial.insurance_expiry ?? '', notes: initial.notes ?? '',
-        home_warehouse_id: initial.home_warehouse_id ?? '', driver_id: initial.driver_id ?? '',
-        salesman_id: initial.salesman_id ?? '', status: initial.status,
+        home_warehouse_id: initial.home_warehouse_id ?? '', status: initial.status,
       });
     }
   }, [initial, reset]);
@@ -78,8 +74,7 @@ function VanForm({ initial, onSubmit, onCancel }: {
       purchase_date: v.purchase_date || null, road_permit_no: v.road_permit_no || null,
       permit_expiry: v.permit_expiry || null, registration_expiry: v.registration_expiry || null,
       insurance_expiry: v.insurance_expiry || null, notes: v.notes || null,
-      home_warehouse_id: v.home_warehouse_id || null, driver_id: v.driver_id || null,
-      salesman_id: v.salesman_id || null, status: v.status,
+      home_warehouse_id: v.home_warehouse_id || null, status: v.status,
     });
     if (error) setError('code', { message: error });
   };
@@ -167,23 +162,11 @@ function VanForm({ initial, onSubmit, onCancel }: {
           {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
         </select>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="label" htmlFor="driver_id">Driver</label>
-          <select id="driver_id" className="input" {...register('driver_id')}>
-            <option value="">— None —</option>
-            {drivers.map((d) => <option key={d.id} value={d.id}>{d.full_name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="label" htmlFor="salesman_id">Salesman</label>
-          <select id="salesman_id" className="input" {...register('salesman_id')}>
-            <option value="">— None —</option>
-            {salesmen.map((s) => <option key={s.id} value={s.id}>{s.full_name}</option>)}
-          </select>
-        </div>
-      </div>
-      <p className="text-xs text-slate-500">For helper/collector assignment and full history, use the van's Assignments tab after saving.</p>
+      <p className="text-xs text-slate-500">
+        Staffing (driver, salesman, helper, collector — any employee can hold any combination of roles,
+        and more than one person can share a role) is managed from the van's <strong>Staff</strong> tab after saving,
+        not here — a van isn't limited to one fixed driver and one fixed salesman.
+      </p>
       <div>
         <label className="label" htmlFor="status">Status</label>
         <select id="status" className="input" {...register('status')}>
@@ -307,8 +290,6 @@ export function VansPage() {
       </div>
     ) },
     { key: 'home_warehouse', header: 'Home warehouse', render: (r) => r.home_warehouse?.name ?? '—' },
-    { key: 'driver', header: 'Driver', render: (r) => r.driver?.full_name ?? '—' },
-    { key: 'salesman', header: 'Salesman', render: (r) => r.salesman?.full_name ?? '—' },
     { key: 'expiry', header: 'Expiry alerts', render: (r) => (
       <div className="flex gap-1">
         {expiryBadge(r.insurance_expiry) && <span title="Insurance">{expiryBadge(r.insurance_expiry)}</span>}
@@ -338,7 +319,7 @@ export function VansPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Vans</h1>
-          <p className="text-sm text-slate-500">Fleet, driver/salesman assignment, home warehouse, and document expiry.</p>
+          <p className="text-sm text-slate-500">Fleet, home warehouse, and document expiry. Click a van to manage its staff.</p>
         </div>
         <PermissionGate permission="van_loading:create">
           <button className="btn-primary" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus size={16} /> New van</button>

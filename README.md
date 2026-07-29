@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0028). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0029). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -433,6 +433,56 @@ active, log in as that company and:
   `npx supabase gen types typescript --project-id <ref>` and merge in the
   domain types (joined-select shapes like `Product['category']`) from the
   current file.
+
+## Architecture correction: flexible Van Staff Assignment
+
+Phase 3A.1 initially built van staffing around fixed `driver_id`/
+`salesman_id` columns on `vans`, plus a `van_assignments` table that only
+allowed one active person per role per van. That doesn't hold up against
+real business shapes — one person doing everything, two salesmen sharing
+a van, a salesman with no driver at all. This was corrected before
+continuing rather than left as a known limitation:
+
+- **`vans.driver_id`/`salesman_id` are gone entirely** — not deprecated,
+  actually dropped. Every place that read them (Vans list, GPS Tracking's
+  "my van" detection, Driver/Salesman Management's "assigned van" lookup)
+  now reads from the new table instead.
+- **`van_staff_assignments`** replaces the old rigid table: one row per
+  (van, employee, role), uniqueness enforced only on the *active* triple.
+  An employee can hold several roles on one van at once (Driver +
+  Salesman + Collector, all one person); several employees can share a
+  role (two Salesmen on one van); a van can have a Salesman with no
+  Driver at all. Nothing assumes a fixed staffing shape.
+- **`van_staff_roles`** — Driver/Salesman/Collector/Helper/Supervisor/
+  Manager/Stock Keeper ship as system roles available to every company,
+  plus company-specific custom roles.
+- **One role marked primary** per employee per van, settable at
+  assignment time via `assign_van_staff()` (also handles
+  `remove_van_staff_role()` for dropping a single role while keeping
+  others, and `remove_van_staff()` for removing someone from a van
+  entirely).
+- **Van Details → Staff tab** replaces the old Assignments tab: assign an
+  employee, multi-select their roles, pick a primary, set an effective
+  date, see current staff (grouped by employee, primary starred) and
+  full history in one place.
+- **"Auto-detect on login"** — `my_van_staff_assignments()` +
+  `useMyVanContext()` give a person's current van/role/route in one
+  call; GPS Tracking's "share my location" now defaults to a person's
+  van this way, instead of matching on full name against a fixed column
+  (the old approach silently broke the moment a name changed or two
+  vans had similarly-named staff).
+- **Van Staff Report** (Van Loading → Staff Report tab) covers Van Staff,
+  Employee Assignment, Role Assignment, and Assignment History reporting
+  in one filterable, exportable table, rather than four separate pages
+  that would all be showing slices of the same underlying data.
+
+**Honestly incomplete pieces of the permissions model** this doc asked
+for: Van-based access (only-assigned-users-can-use-a-van) and Role-based
+access (system permissions) are both real and enforced. **Branch-based
+access** — restricting a person to specific warehouses beyond just
+display — isn't enforced anywhere; `home_warehouse_id` is informational
+only right now. Worth a dedicated pass if you need staff genuinely
+walled off from other branches' data, not just their own.
 
 ## Phase 3A.2: Driver / Salesman / Route Management
 

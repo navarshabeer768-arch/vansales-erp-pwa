@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Radar, Navigation, ExternalLink, CircleDot } from 'lucide-react';
 import { useVanPositions, useShareLocation } from '@/hooks/useGpsTracking';
-import { useAuth } from '@/contexts/AuthContext';
+import { useMyVanContext } from '@/hooks/useVanAssignments';
 import { useToast } from '@/contexts/ToastContext';
 
 function timeAgo(iso: string | null): string {
@@ -19,20 +19,17 @@ function isLive(iso: string | null): boolean {
 
 export function GpsTrackingPage() {
   const { vans, loading } = useVanPositions();
-  const { user } = useAuth();
+  const { defaultVanId } = useMyVanContext();
   const { push } = useToast();
 
-  const myVan = useMemo(
-    () => vans.find((v: any) => v.driver?.full_name === user?.full_name || v.salesman?.full_name === user?.full_name),
-    [vans, user]
-  );
   const [selectedVanId] = useState<string | null>(null);
-  const activeVanId = selectedVanId ?? myVan?.id ?? null;
+  const activeVanId = selectedVanId ?? defaultVanId;
+  const canShare = activeVanId !== null;
   const { sharing, error, start, stop } = useShareLocation(activeVanId);
 
   const handleToggleSharing = () => {
     if (sharing) { stop(); push('info', 'Stopped sharing location.'); return; }
-    if (!activeVanId) { push('error', 'No van assigned to you to share location for.'); return; }
+    if (!activeVanId) { push('error', 'No single van assigned to you to share location for.'); return; }
     start();
     push('success', 'Sharing your location — this updates while this tab stays open.');
   };
@@ -44,7 +41,7 @@ export function GpsTrackingPage() {
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">GPS Tracking</h1>
           <p className="text-sm text-slate-500">Live van positions. Auto-refreshes every 20 seconds.</p>
         </div>
-        {myVan && (
+        {canShare && (
           <button className={sharing ? 'btn-danger' : 'btn-primary'} onClick={handleToggleSharing}>
             <Navigation size={16} /> {sharing ? 'Stop sharing my location' : 'Share my location'}
           </button>
@@ -83,8 +80,11 @@ export function GpsTrackingPage() {
                   )}
                 </div>
                 <div className="text-sm text-slate-500">
-                  <p>Driver: {v.driver?.full_name ?? '—'}</p>
-                  <p>Salesman: {v.salesman?.full_name ?? '—'}</p>
+                  {v.staff.length === 0 ? (
+                    <p>No staff currently assigned</p>
+                  ) : (
+                    v.staff.map((s, i) => <p key={i}>{s.full_name} <span className="capitalize text-slate-400">({s.role_code.replace('_', ' ')})</span></p>)
+                  )}
                 </div>
                 <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
                   <span className="text-slate-500">Updated {timeAgo(v.last_location_at)}</span>

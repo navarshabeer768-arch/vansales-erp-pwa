@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { UserCog, FileText, CalendarCheck, Trash2 } from 'lucide-react';
 import { useDrivers, useDriverProfile, useDriverDocuments, useDriverAttendance, DriverDocumentType } from '@/hooks/useDriverProfiles';
-import { useVans } from '@/hooks/useVans';
+import { useAllActiveVanStaff } from '@/hooks/useVanAssignments';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -195,12 +195,12 @@ function AttendanceTab({ userId }: { userId: string }) {
 
 export function DriverManagementPage() {
   const { drivers, loading } = useDrivers();
-  const { vans } = useVans();
+  const { rows: vanStaff } = useAllActiveVanStaff();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<'profile' | 'documents' | 'attendance'>('profile');
 
   const selected = drivers.find((d) => d.id === selectedId);
-  const assignedVan = (userId: string) => vans.find((v) => v.driver_id === userId);
+  const assignedVans = (userId: string) => vanStaff.filter((r) => r.employee_id === userId);
 
   return (
     <div className="space-y-4">
@@ -227,7 +227,7 @@ export function DriverManagementPage() {
               >
                 <div>
                   <p className="font-medium">{d.full_name}</p>
-                  <p className="text-xs text-slate-500">@{d.username}{assignedVan(d.id) ? ` · ${assignedVan(d.id)!.name}` : ''}</p>
+                  <p className="text-xs text-slate-500">@{d.username}{assignedVans(d.id).length > 0 ? ` · ${assignedVans(d.id).map((v) => v.van_name).join(', ')}` : ''}</p>
                 </div>
                 <span className={d.is_active ? 'badge-green' : 'badge-slate'}>{d.is_active ? 'Active' : 'Inactive'}</span>
               </button>

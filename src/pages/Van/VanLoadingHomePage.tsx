@@ -4,6 +4,7 @@ import clsx from 'clsx';
 const TABS = [
   { to: '/van-loading', label: 'Loading Sheets', end: true },
   { to: '/van-loading/vans', label: 'Vans', end: false },
+  { to: '/van-loading/staff-report', label: 'Staff Report', end: false },
 ];
 
 export function VanLoadingHomePage() {
