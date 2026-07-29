@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Search, Trash2, Plus, UserPlus, WifiOff, ScanLine } from 'lucide-react';
 import { useVans } from '@/hooks/useVans';
+import { useMyVanIds } from '@/hooks/useVanAssignments';
 import { useVanStock } from '@/hooks/useVanUnloadings';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useCreateSale, CartItem, PaymentEntry, calculateCartTotals, useOfflineSync } from '@/hooks/useSales';
@@ -53,6 +54,8 @@ function round2(n: number) { return Math.round(n * 100) / 100; }
 
 export function POSPage() {
   const { vans } = useVans();
+  const myVanIds = useMyVanIds();
+  const accessibleVans = myVanIds === null ? vans : vans.filter((v) => myVanIds.has(v.id));
   const { customers, reload: reloadCustomers } = useCustomers();
   const { push } = useToast();
   const { submit, submitting } = useCreateSale();
@@ -192,7 +195,7 @@ export function POSPage() {
             <label className="label">Van</label>
             <select className="input" value={vanId} onChange={(e) => { setVanId(e.target.value); setCart([]); }}>
               <option value="">Select a van…</option>
-              {vans.filter((v) => v.status === 'active').map((v) => <option key={v.id} value={v.id}>{v.name} ({v.code})</option>)}
+              {accessibleVans.filter((v) => v.status === 'active').map((v) => <option key={v.id} value={v.id}>{v.name} ({v.code})</option>)}
             </select>
           </div>
           <div>

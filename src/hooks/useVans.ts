@@ -8,6 +8,18 @@ export interface Van {
   code: string;
   name: string;
   registration_no: string | null;
+  vin_number: string | null;
+  chassis_number: string | null;
+  engine_number: string | null;
+  vehicle_type: string | null;
+  capacity: string | null;
+  current_odometer: number | null;
+  purchase_date: string | null;
+  road_permit_no: string | null;
+  permit_expiry: string | null;
+  registration_expiry: string | null;
+  notes: string | null;
+  is_archived: boolean;
   insurance_expiry: string | null;
   home_warehouse_id: string | null;
   driver_id: string | null;
@@ -21,7 +33,7 @@ export interface Van {
 }
 
 export type VanInput = Omit<
-  Van, 'id' | 'company_id' | 'created_at' | 'updated_at' | 'home_warehouse' | 'driver' | 'salesman'
+  Van, 'id' | 'company_id' | 'created_at' | 'updated_at' | 'home_warehouse' | 'driver' | 'salesman' | 'is_archived'
 >;
 
 const SELECT = '*, home_warehouse:warehouses(id,name), driver:app_users!vans_driver_id_fkey(id,full_name), salesman:app_users!vans_salesman_id_fkey(id,full_name)';
@@ -39,6 +51,7 @@ export function useVans() {
       .from('vans')
       .select(SELECT)
       .eq('company_id', company.id)
+      .eq('is_archived', false)
       .order('name', { ascending: true });
     setLoading(false);
     if (err) setError(err.message);
@@ -66,7 +79,37 @@ export function useVans() {
     return { error: err?.message ?? null };
   }, [load]);
 
-  return { vans, loading, error, reload: load, createVan, updateVan, deactivateVan };
+  const archiveVan = useCallback(async (id: string) => {
+    const { error: err } = await supabase.from('vans').update({ is_archived: true }).eq('id', id);
+    if (!err) await load();
+    return { error: err?.message ?? null };
+  }, [load]);
+
+  const restoreVan = useCallback(async (id: string) => {
+    const { error: err } = await supabase.from('vans').update({ is_archived: false }).eq('id', id);
+    if (!err) await load();
+    return { error: err?.message ?? null };
+  }, [load]);
+
+  return { vans, loading, error, reload: load, createVan, updateVan, deactivateVan, archiveVan, restoreVan };
+}
+
+export function useArchivedVans() {
+  const { company } = useAuth();
+  const [vans, setVans] = useState<Van[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    if (!company) return;
+    setLoading(true);
+    const { data } = await supabase.from('vans').select(SELECT).eq('company_id', company.id).eq('is_archived', true).order('name');
+    setVans((data ?? []) as unknown as Van[]);
+    setLoading(false);
+  }, [company]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return { vans, loading, reload: load };
 }
 
 export function useSalesmenAndDrivers() {

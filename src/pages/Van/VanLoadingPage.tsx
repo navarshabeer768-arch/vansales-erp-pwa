@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Check, Trash2, Zap } from 'lucide-react';
 import { useVans } from '@/hooks/useVans';
+import { useMyVanIds } from '@/hooks/useVanAssignments';
 import { useWarehouses } from '@/hooks/useWarehouses';
 import { useWarehouseStock } from '@/hooks/useWarehouseStock';
 import { useVanLoadings, VanLoadingItemDraft, VanLoading } from '@/hooks/useVanLoadings';
@@ -13,6 +14,8 @@ import { useToast } from '@/contexts/ToastContext';
 
 function NewLoadingModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const { vans } = useVans();
+  const myVanIds = useMyVanIds();
+  const accessibleVans = myVanIds === null ? vans : vans.filter((v) => myVanIds.has(v.id));
   const { warehouses } = useWarehouses();
   const { createLoading } = useVanLoadings();
   const { push } = useToast();
@@ -87,7 +90,7 @@ function NewLoadingModal({ open, onClose, onCreated }: { open: boolean; onClose:
             <label className="label">Van</label>
             <select className="input" value={vanId} onChange={(e) => setVanId(e.target.value)}>
               <option value="">Select a van…</option>
-              {vans.filter((v) => v.status === 'active').map((v) => <option key={v.id} value={v.id}>{v.name} ({v.code})</option>)}
+              {accessibleVans.filter((v) => v.status === 'active').map((v) => <option key={v.id} value={v.id}>{v.name} ({v.code})</option>)}
             </select>
           </div>
           <div>

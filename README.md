@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0026). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0027). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -436,10 +436,12 @@ active, log in as that company and:
 
 ## What's next
 
-Every module from the original spec is built and working. The only
-open item is the Platform Admin / SaaS-side polish from earlier in
-this project's history, whenever you're ready to revisit it. Beyond
-that, natural next steps if you want to keep extending:
+Every module from the original spec is built and working, including
+the enterprise requirements passes (User Management, Inventory Phase 2,
+and Fleet Management — see below). The only open item is the Platform
+Admin / SaaS-side polish from earlier in this project's history,
+whenever you're ready to revisit it. Beyond that, natural next steps if
+you want to keep extending:
 - Attendance/leave/payroll tables (not in the schema yet — HR currently
   covers accounts/roles, not time tracking).
 - A live map view for GPS Tracking (currently a Google Maps link per
@@ -447,12 +449,40 @@ that, natural next steps if you want to keep extending:
   maps API key and a small integration).
 - Multi-language / RTL support for Arabic-speaking staff, if useful
   for GCC deployments.
-3. **PDT hardware layer** — barcode scanning (camera-based, works on any
-   PDT with a rear camera without native code), Bluetooth/thermal
-   printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm
-   and A4 templates), GPS polling into `gps_logs` (the Geolocation
-   pattern from Customer Visits extends directly to a background
-   watchPosition poll for live van tracking).
+
+**Phase 3A.1: Fleet Management** (from your enterprise requirements doc) —
+every item on the list is built:
+- **Van Management** — `vans` extended with VIN, chassis number, engine
+  number, vehicle type, capacity, current odometer, purchase date, road
+  permit number + expiry, registration expiry (alongside the existing
+  insurance expiry), and notes. **Archive/Restore** is now a distinct
+  action from Active/Inactive status — archiving fully removes a van
+  from the active fleet list (not just marks it inactive), with a
+  restore option in an "Archived vans" section underneath.
+- **Van User Assignment** — a real `van_assignments` history table
+  (driver/salesman/helper/collector, each permanent/temporary/
+  replacement, with start/end dates). Assigning a new person to a role
+  automatically ends whoever had it before, keeping full history rather
+  than silently overwriting. `vans.driver_id`/`salesman_id` stay in sync
+  automatically so existing code that reads those columns didn't need
+  to change. "Only assigned users can access the van" is enforced at
+  the picker level: the Van dropdown in **POS** and **Van Loading** only
+  shows vans the signed-in person is actively assigned to — unless they
+  hold `van_loading:approve` (managers/admins), who see the whole fleet,
+  since the point is keeping salesmen/drivers scoped to their own van,
+  not locking out the people who need fleet-wide oversight.
+- **Vehicle Documents** — insurance/registration/permit/fitness/
+  warranty/service book, each with a document number, issue/expiry
+  dates, and a file link. Expiry shows a live days-remaining badge.
+- **Vehicle Images** — a simple gallery per van (image URL + primary
+  flag), on the van's Images tab.
+- **Reports** — Van List and expiry alerts are visible directly on the
+  Vans list (insurance/registration/permit badges, ≤30 days or expired);
+  Assignment Report is the per-van Assignments tab's history table,
+  exportable like every other table in the app.
+
+Click any van's name from the Vans list to reach its detail page
+(Assignments / Documents / Images tabs).
 
 Each phase should follow the same pattern used so far: a typed hook per
 entity, a form with `zod` validation, a `DataTable`-backed list page,

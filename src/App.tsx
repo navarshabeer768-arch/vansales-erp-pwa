@@ -30,6 +30,7 @@ import { StockAdjustmentPage } from '@/pages/Warehouse/StockAdjustmentPage';
 import { VanLoadingHomePage } from '@/pages/Van/VanLoadingHomePage';
 import { VanLoadingPage } from '@/pages/Van/VanLoadingPage';
 import { VansPage } from '@/pages/Van/VansPage';
+import { VanDetailPage } from '@/pages/Van/VanDetailPage';
 import { VanUnloadingPage } from '@/pages/Van/VanUnloadingPage';
 import { SalesHomePage } from '@/pages/Sales/SalesHomePage';
 import { POSPage } from '@/pages/Sales/POSPage';
@@ -104,6 +105,7 @@ export default function App() {
               <Route index element={<VanLoadingPage />} />
               <Route path="vans" element={<VansPage />} />
             </Route>
+            <Route path="van-loading/vans/:vanId" element={<VanDetailPage />} />
             <Route path="van-unloading" element={<VanUnloadingPage />} />
 
             <Route path="sales" element={<SalesHomePage />}>
