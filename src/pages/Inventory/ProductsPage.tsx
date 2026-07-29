@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Ban, PackageX, Upload } from 'lucide-react';
+import { Plus, Pencil, Ban, PackageX, Upload, Layers } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import type { Product } from '@/types/database';
 import { DataTable, Column } from '@/components/ui/DataTable';
@@ -9,6 +9,7 @@ import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 import { ProductForm } from './ProductForm';
 import { ImportProductsModal } from './ImportProductsModal';
+import { ManageVariantsModal } from './ManageVariantsModal';
 import type { ProductInput } from '@/hooks/useProducts';
 
 export function ProductsPage() {
@@ -16,6 +17,7 @@ export function ProductsPage() {
   const { push } = useToast();
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [variantsProduct, setVariantsProduct] = useState<Product | null>(null);
   const [editing, setEditing] = useState<Product | null>(null);
   const [toDeactivate, setToDeactivate] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,6 +73,11 @@ export function ProductsPage() {
       key: 'actions', header: '', className: 'text-right',
       render: (r) => (
         <div className="flex justify-end gap-1">
+          <PermissionGate permission="inventory:edit">
+            <button className="btn-ghost !px-2 !py-1" onClick={() => setVariantsProduct(r)} aria-label={`Manage variants for ${r.name}`} title="Variants">
+              <Layers size={16} />
+            </button>
+          </PermissionGate>
           <PermissionGate permission="inventory:edit">
             <button className="btn-ghost !px-2 !py-1" onClick={() => openEdit(r)} aria-label={`Edit ${r.name}`}>
               <Pencil size={16} />
@@ -151,6 +158,8 @@ export function ProductsPage() {
       />
 
       <ImportProductsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={reload} />
+
+      <ManageVariantsModal product={variantsProduct} onClose={() => setVariantsProduct(null)} />
     </div>
   );
 }
