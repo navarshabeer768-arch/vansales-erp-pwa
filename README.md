@@ -161,6 +161,44 @@ React + TypeScript + Tailwind + Supabase.
 
 Every module from the original spec is now built.
 
+**Recent additions from the enterprise requirements pass:**
+- **CSV export** on every major data table (Sales History, all five
+  Reports tables, Collections, Payments, Products, Warehouse Stock) —
+  one generic `exportFilename` prop on the shared `DataTable` component,
+  so it's trivial to add to any future table too.
+- **A real Dashboard** — `dashboard_stats()` aggregates today/month/year
+  sales, cash vs. credit collected today, outstanding receivables/
+  payables, warehouse + van stock value, low-stock/expiry counts, a
+  pending-approvals queue across loading/unloading/adjustments/returns,
+  today's loading/unloading/visit status with route-completion %, live
+  van count, and returns/damages this month — all in one server-side
+  call. Below that, a "This Month's Leaders" section reuses the Reports
+  aggregation logic for top products/customers/salesmen/vans.
+
+**Honestly still not built**, from the exhaustive enterprise spec —
+flagging these rather than pretending they're covered:
+- Full double-entry accounting (chart of accounts CRUD, journal entries,
+  general/customer/supplier ledgers, trial balance, balance sheet, fixed
+  assets/depreciation, payment/receipt/contra vouchers) — Accounting
+  currently has a computed P&L summary and expense tracking, not a real
+  ledger system.
+- A generalized multi-level approval chain (Salesman → Supervisor →
+  Manager → Accounts → Admin) — each transaction type currently has its
+  own single-step approve/reject, not a configurable chain.
+- 2FA, session management, login history, device registration
+  enforcement (the columns exist on `app_users`, nothing reads/writes
+  them yet).
+- PDF/Excel export (CSV is done; PDF/XLSX would add real bundle weight
+  — worth doing only for whichever specific reports you actually hand
+  to clients/auditors).
+- A populated Notifications system (table exists; nothing generates
+  stock/expiry/approval notifications yet, and there's no inbox UI).
+- Product Variants and Serial Number UI (schema exists, no screens).
+- Scheme/Promotion-based automatic discounting at POS (manual per-line
+  discount and free-item checkbox exist; no rule engine).
+- Attendance/leave/payroll, employee documents, sales targets/incentives
+  (need new tables — HR currently covers accounts/roles only).
+
 ## Live deployment
 
 - **GitHub Pages:** https://navarshabeer768-arch.github.io/vansales-erp-pwa/
@@ -188,7 +226,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0022). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0023). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn

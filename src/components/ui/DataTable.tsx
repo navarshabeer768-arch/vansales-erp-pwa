@@ -1,11 +1,14 @@
 import { useMemo, useState, ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, Search, ArrowUpDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, ArrowUpDown, Download } from 'lucide-react';
+import { exportRowsToCsv } from '@/lib/csvExport';
 
 export interface Column<T> {
   key: string;
   header: string;
   render?: (row: T) => ReactNode;
   sortValue?: (row: T) => string | number;
+  /** Plain-text value for CSV export. Falls back to sortValue, then the raw field, then blank. */
+  csvValue?: (row: T) => string | number;
   className?: string;
 }
 
@@ -18,11 +21,13 @@ interface DataTableProps<T> {
   pageSize?: number;
   emptyMessage?: string;
   loading?: boolean;
+  /** Filename (without .csv) for the export button. Omit to hide the export button entirely. */
+  exportFilename?: string;
 }
 
 export function DataTable<T>({
   columns, rows, rowKey, searchPlaceholder = 'Search…', searchFn, pageSize = 10,
-  emptyMessage = 'No records found.', loading = false,
+  emptyMessage = 'No records found.', loading = false, exportFilename,
 }: DataTableProps<T>) {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -59,20 +64,43 @@ export function DataTable<T>({
     }
   };
 
+  const handleExport = () => {
+    const exportableColumns = columns.filter((c) => c.key !== 'actions');
+    const headers = exportableColumns.map((c) => c.header || c.key);
+    const csvRows = sorted.map((row) =>
+      exportableColumns.map((c) => {
+        if (c.csvValue) return c.csvValue(row);
+        if (c.sortValue) return c.sortValue(row);
+        const raw = (row as any)[c.key];
+        return typeof raw === 'string' || typeof raw === 'number' ? raw : '';
+      })
+    );
+    exportRowsToCsv(exportFilename ?? 'export', headers, csvRows);
+  };
+
   return (
     <div className="card overflow-hidden">
-      {searchFn && (
+      {(searchFn || exportFilename) && (
         <div className="flex items-center gap-2 border-b border-slate-200 p-3 dark:border-slate-800">
-          <div className="relative flex-1 max-w-xs">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              className="input pl-9"
-              placeholder={searchPlaceholder}
-              value={query}
-              onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-            />
-          </div>
-          <span className="ml-auto text-xs text-slate-500">{sorted.length} record{sorted.length === 1 ? '' : 's'}</span>
+          {searchFn && (
+            <div className="relative flex-1 max-w-xs">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                className="input pl-9"
+                placeholder={searchPlaceholder}
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+              />
+            </div>
+          )}
+          <span className={`text-xs text-slate-500 ${searchFn ? '' : 'flex-1'}`}>
+            {sorted.length} record{sorted.length === 1 ? '' : 's'}
+          </span>
+          {exportFilename && sorted.length > 0 && (
+            <button className="btn-secondary !py-1.5 ml-auto" onClick={handleExport}>
+              <Download size={14} /> Export CSV
+            </button>
+          )}
         </div>
       )}
 

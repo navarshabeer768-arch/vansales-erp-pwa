@@ -176,6 +176,7 @@ export function SalesHistoryPage() {
         searchPlaceholder="Search invoice or customer…"
         searchFn={(r, q) => r.invoice_no.toLowerCase().includes(q) || (r.customer?.business_name ?? '').toLowerCase().includes(q)}
         emptyMessage="No sales recorded yet."
+        exportFilename="sales-history"
       />
       <SaleDetailModal sale={viewing} onClose={() => setViewing(null)} />
     </div>

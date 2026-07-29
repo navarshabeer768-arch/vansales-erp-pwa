@@ -6,6 +6,7 @@ export interface TrendPoint { date: string; total: number; }
 export interface TopProductRow { product_id: string; name: string; quantity: number; revenue: number; }
 export interface TopCustomerRow { customer_id: string; name: string; revenue: number; orders: number; }
 export interface SalesmanRow { salesman_id: string; name: string; revenue: number; orders: number; }
+export interface VanSalesRow { van_id: string; name: string; revenue: number; orders: number; }
 export interface LowStockRow { product_id: string; name: string; sku: string; warehouse: string; quantity: number; min_stock: number; }
 export interface ExpiryRow { product_id: string; name: string; batch_no: string; warehouse: string; quantity: number; expiry_date: string; daysLeft: number; }
 
@@ -17,6 +18,7 @@ export function useReports(startDate: string, endDate: string) {
   const [topProducts, setTopProducts] = useState<TopProductRow[]>([]);
   const [topCustomers, setTopCustomers] = useState<TopCustomerRow[]>([]);
   const [salesmen, setSalesmen] = useState<SalesmanRow[]>([]);
+  const [vans, setVans] = useState<VanSalesRow[]>([]);
   const [lowStock, setLowStock] = useState<LowStockRow[]>([]);
   const [expiring, setExpiring] = useState<ExpiryRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,7 @@ export function useReports(startDate: string, endDate: string) {
     ] = await Promise.all([
       supabase
         .from('sales')
-        .select('id, created_at, total_amount, customer_id, salesman_id, customer:customers(business_name), salesman:app_users(full_name)')
+        .select('id, created_at, total_amount, customer_id, salesman_id, van_id, customer:customers(business_name), salesman:app_users(full_name), van:vans(name)')
         .eq('company_id', company.id).eq('status', 'completed')
         .gte('created_at', startDate).lte('created_at', endOfDay(endDate)),
       supabase
@@ -76,6 +78,7 @@ export function useReports(startDate: string, endDate: string) {
     // --- Top customers & salesman performance (from sales) ---
     const customerMap = new Map<string, TopCustomerRow>();
     const salesmanMap = new Map<string, SalesmanRow>();
+    const vanMap = new Map<string, VanSalesRow>();
     for (const s of (sales ?? []) as any[]) {
       if (s.customer_id) {
         const existing = customerMap.get(s.customer_id) ?? { customer_id: s.customer_id, name: s.customer?.business_name ?? 'Walk-in', revenue: 0, orders: 0 };
@@ -89,9 +92,16 @@ export function useReports(startDate: string, endDate: string) {
         existing.orders += 1;
         salesmanMap.set(s.salesman_id, existing);
       }
+      if (s.van_id) {
+        const existing = vanMap.get(s.van_id) ?? { van_id: s.van_id, name: s.van?.name ?? '—', revenue: 0, orders: 0 };
+        existing.revenue += s.total_amount;
+        existing.orders += 1;
+        vanMap.set(s.van_id, existing);
+      }
     }
     setTopCustomers(Array.from(customerMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 10));
     setSalesmen(Array.from(salesmanMap.values()).sort((a, b) => b.revenue - a.revenue));
+    setVans(Array.from(vanMap.values()).sort((a, b) => b.revenue - a.revenue));
 
     // --- Low stock ---
     const low = ((stockRows ?? []) as any[])
@@ -128,5 +138,5 @@ export function useReports(startDate: string, endDate: string) {
   const totalRevenue = trend.reduce((sum, t) => sum + t.total, 0);
   const totalOrders = salesmen.reduce((sum, s) => sum + s.orders, 0);
 
-  return { trend, topProducts, topCustomers, salesmen, lowStock, expiring, loading, totalRevenue, totalOrders, reload: load };
+  return { trend, topProducts, topCustomers, salesmen, vans, lowStock, expiring, loading, totalRevenue, totalOrders, reload: load };
 }

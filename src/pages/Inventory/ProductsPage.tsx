@@ -125,6 +125,7 @@ export function ProductsPage() {
           searchFn={(r, q) =>
             r.name.toLowerCase().includes(q) || r.sku.toLowerCase().includes(q) || (r.barcode ?? '').toLowerCase().includes(q)
           }
+          exportFilename="products"
         />
       )}
 

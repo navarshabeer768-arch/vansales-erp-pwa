@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { AlertTriangle, PackageX } from 'lucide-react';
 import { useReports } from '@/hooks/useReports';
 import { DataTable, Column } from '@/components/ui/DataTable';
-import type { TopProductRow, TopCustomerRow, SalesmanRow, LowStockRow, ExpiryRow } from '@/hooks/useReports';
+import type { TopProductRow, TopCustomerRow, SalesmanRow, VanSalesRow, LowStockRow, ExpiryRow } from '@/hooks/useReports';
 
 function isoDaysAgo(days: number) {
   const d = new Date();
@@ -14,7 +14,7 @@ function isoDaysAgo(days: number) {
 export function ReportsPage() {
   const [startDate, setStartDate] = useState(isoDaysAgo(30));
   const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
-  const { trend, topProducts, topCustomers, salesmen, lowStock, expiring, loading, totalRevenue, totalOrders } =
+  const { trend, topProducts, topCustomers, salesmen, vans, lowStock, expiring, loading, totalRevenue, totalOrders } =
     useReports(startDate, endDate);
 
   const productColumns: Column<TopProductRow>[] = [
@@ -29,6 +29,11 @@ export function ReportsPage() {
   ];
   const salesmanColumns: Column<SalesmanRow>[] = [
     { key: 'name', header: 'Salesman', render: (r) => <span className="font-medium">{r.name}</span> },
+    { key: 'orders', header: 'Orders', sortValue: (r) => r.orders },
+    { key: 'revenue', header: 'Revenue', sortValue: (r) => r.revenue, render: (r) => r.revenue.toFixed(2) },
+  ];
+  const vanColumns: Column<VanSalesRow>[] = [
+    { key: 'name', header: 'Van', render: (r) => <span className="font-medium">{r.name}</span> },
     { key: 'orders', header: 'Orders', sortValue: (r) => r.orders },
     { key: 'revenue', header: 'Revenue', sortValue: (r) => r.revenue, render: (r) => r.revenue.toFixed(2) },
   ];
@@ -96,18 +101,22 @@ export function ReportsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         <div>
           <h2 className="mb-2 font-semibold text-slate-800 dark:text-slate-100">Top products</h2>
-          <DataTable columns={productColumns} rows={topProducts} rowKey={(r) => r.product_id} loading={loading} emptyMessage="No sales yet." />
+          <DataTable columns={productColumns} rows={topProducts} rowKey={(r) => r.product_id} loading={loading} emptyMessage="No sales yet." exportFilename="top-products" />
         </div>
         <div>
           <h2 className="mb-2 font-semibold text-slate-800 dark:text-slate-100">Top customers</h2>
-          <DataTable columns={customerColumns} rows={topCustomers} rowKey={(r) => r.customer_id} loading={loading} emptyMessage="No sales yet." />
+          <DataTable columns={customerColumns} rows={topCustomers} rowKey={(r) => r.customer_id} loading={loading} emptyMessage="No sales yet." exportFilename="top-customers" />
         </div>
         <div>
-          <h2 className="mb-2 font-semibold text-slate-800 dark:text-slate-100">Salesman performance</h2>
-          <DataTable columns={salesmanColumns} rows={salesmen} rowKey={(r) => r.salesman_id} loading={loading} emptyMessage="No sales yet." />
+          <h2 className="mb-2 font-semibold text-slate-800 dark:text-slate-100">Sales by salesman</h2>
+          <DataTable columns={salesmanColumns} rows={salesmen} rowKey={(r) => r.salesman_id} loading={loading} emptyMessage="No sales yet." exportFilename="salesman-performance" />
+        </div>
+        <div>
+          <h2 className="mb-2 font-semibold text-slate-800 dark:text-slate-100">Sales by van</h2>
+          <DataTable columns={vanColumns} rows={vans} rowKey={(r) => r.van_id} loading={loading} emptyMessage="No sales yet." exportFilename="sales-by-van" />
         </div>
       </div>
 
@@ -115,14 +124,14 @@ export function ReportsPage() {
         <h2 className="mb-2 flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
           <PackageX size={18} className="text-red-500" /> Low stock (at or below minimum)
         </h2>
-        <DataTable columns={lowStockColumns} rows={lowStock} rowKey={(r) => `${r.product_id}-${r.warehouse}`} loading={loading} emptyMessage="Nothing below minimum stock." />
+        <DataTable columns={lowStockColumns} rows={lowStock} rowKey={(r) => `${r.product_id}-${r.warehouse}`} loading={loading} emptyMessage="Nothing below minimum stock." exportFilename="low-stock" />
       </div>
 
       <div>
         <h2 className="mb-2 flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100">
           <AlertTriangle size={18} className="text-amber-500" /> Expiring within 30 days
         </h2>
-        <DataTable columns={expiryColumns} rows={expiring} rowKey={(r) => `${r.product_id}-${r.batch_no}-${r.warehouse}`} loading={loading} emptyMessage="Nothing expiring soon." />
+        <DataTable columns={expiryColumns} rows={expiring} rowKey={(r) => `${r.product_id}-${r.batch_no}-${r.warehouse}`} loading={loading} emptyMessage="Nothing expiring soon." exportFilename="expiry-alerts" />
       </div>
     </div>
   );

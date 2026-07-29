@@ -156,13 +156,13 @@ export function CollectionsPage() {
         </div>
       ) : (
         <DataTable columns={outstandingColumns} rows={customers} rowKey={(r) => r.id} loading={loading}
-          searchPlaceholder="Search customers…" searchFn={(r, q) => r.business_name.toLowerCase().includes(q)} />
+          searchPlaceholder="Search customers…" searchFn={(r, q) => r.business_name.toLowerCase().includes(q)} exportFilename="outstanding-customers" />
       )}
 
       <div>
         <h2 className="mb-2 text-lg font-semibold text-slate-800 dark:text-slate-100">Recent collections</h2>
         <DataTable columns={historyColumns} rows={collections} rowKey={(r) => r.id} loading={loadingHistory}
-          emptyMessage="No collections recorded yet." />
+          emptyMessage="No collections recorded yet." exportFilename="collections" />
       </div>
 
       <CollectModal customer={collecting} onClose={() => setCollecting(null)} onDone={refreshAll} />

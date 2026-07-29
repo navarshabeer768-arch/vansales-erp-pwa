@@ -112,13 +112,13 @@ export function PaymentsPage() {
         </div>
       ) : (
         <DataTable columns={outstandingColumns} rows={suppliers} rowKey={(r) => r.id} loading={loading}
-          searchPlaceholder="Search suppliers…" searchFn={(r, q) => r.name.toLowerCase().includes(q)} />
+          searchPlaceholder="Search suppliers…" searchFn={(r, q) => r.name.toLowerCase().includes(q)} exportFilename="outstanding-suppliers" />
       )}
 
       <div>
         <h2 className="mb-2 text-lg font-semibold text-slate-800 dark:text-slate-100">Recent payments</h2>
         <DataTable columns={historyColumns} rows={payments} rowKey={(r) => r.id} loading={loadingHistory}
-          emptyMessage="No payments recorded yet." />
+          emptyMessage="No payments recorded yet." exportFilename="supplier-payments" />
       </div>
 
       <PayModal supplier={paying} onClose={() => setPaying(null)} onDone={refreshAll} />

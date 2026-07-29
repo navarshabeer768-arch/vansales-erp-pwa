@@ -57,6 +57,7 @@ export function StockPage() {
         searchPlaceholder="Search product…"
         searchFn={(r, q) => (r.product?.name ?? '').toLowerCase().includes(q) || (r.product?.sku ?? '').toLowerCase().includes(q)}
         emptyMessage="No stock recorded for this warehouse yet."
+        exportFilename="warehouse-stock"
       />
     </div>
   );
