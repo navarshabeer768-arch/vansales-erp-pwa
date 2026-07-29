@@ -43,6 +43,10 @@ import { AccountingHomePage } from '@/pages/Accounting/AccountingHomePage';
 import { PLSummaryPage } from '@/pages/Accounting/PLSummaryPage';
 import { ExpensesPage } from '@/pages/Accounting/ExpensesPage';
 import { CompanySettingsPage } from '@/pages/Settings/CompanySettingsPage';
+import { SettingsHomePage } from '@/pages/Settings/SettingsHomePage';
+import { SecuritySettingsPage } from '@/pages/Settings/SecuritySettingsPage';
+import { RolesPermissionsPage } from '@/pages/Settings/RolesPermissionsPage';
+import { LoginHistoryPage } from '@/pages/Settings/LoginHistoryPage';
 import { lazy, Suspense } from 'react';
 const ReportsPage = lazy(() => import('@/pages/Reports/ReportsPage').then((m) => ({ default: m.ReportsPage })));
 
@@ -115,7 +119,12 @@ export default function App() {
             } />
             <Route path="hr" element={<StaffPage />} />
             <Route path="gps" element={<GpsTrackingPage />} />
-            <Route path="settings" element={<CompanySettingsPage />} />
+            <Route path="settings" element={<SettingsHomePage />}>
+              <Route index element={<CompanySettingsPage />} />
+              <Route path="security" element={<SecuritySettingsPage />} />
+              <Route path="roles" element={<RolesPermissionsPage />} />
+              <Route path="login-history" element={<LoginHistoryPage />} />
+            </Route>
             </Route>
           </Route>
         </Route>

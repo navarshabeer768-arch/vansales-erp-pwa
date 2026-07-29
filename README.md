@@ -199,6 +199,45 @@ flagging these rather than pretending they're covered:
 - Attendance/leave/payroll, employee documents, sales targets/incentives
   (need new tables — HR currently covers accounts/roles only).
 
+**User Management Phase 1** (from your enterprise requirements doc):
+- **Change Password** — Settings → Security, self-service.
+- **Sessions** — "Sign out of all devices" (`supabase.auth.signOut({scope:'global'})`)
+  invalidates every active session for the account, not just this one.
+- **Login History** — every sign-in attempt (success and failure, with a
+  device label) is logged via `log_login_attempt()`; viewable at
+  Settings → Login History (`hr:edit` only).
+- **Device registration** — `register_device()` records a persistent
+  per-browser device ID and timestamp on `app_users` at successful login
+  (shown on the Security tab as "this device").
+- **Roles & Permissions editor** — Settings → Roles & Permissions: pick
+  any of your company's roles (except `company_admin`/`super_admin`,
+  which always keep full access so a company can never lock itself out)
+  and toggle exactly which of the 17 modules × 6 actions it can do.
+  Previously these grants were fixed at company creation and read-only.
+
+**What's genuinely not possible with this architecture, explained rather
+than glossed over:**
+- **Self-service "Forgot Password" over email** — the login design (Store
+  ID + Username + Password, no email collected anywhere) means every
+  account's actual Supabase Auth email is an invisible placeholder
+  nobody can read mail at. Supabase can only send a reset link to the
+  address on file, so it would silently go nowhere. The workable
+  alternative is **Change Password** (built above, for anyone still able
+  to log in) — a true "I forgot and I'm locked out" recovery would need
+  either (a) reintroducing a real, reachable email per account, which
+  conflicts with the no-email login you asked for, or (b) a backend
+  service (Supabase Edge Function with the service-role key) that can
+  administratively reset a password without needing the old one — real
+  infrastructure this project doesn't have yet.
+- **Multiple roles per user** — `app_users` has a single `role_id`.
+  Supporting several roles per person is a real schema change (a
+  many-to-many `user_roles` join table) that also touches every
+  permission check in the app (`current_role_code()`, `has_permission()`)
+  — worth doing deliberately as its own pass, not folded in here.
+- **Account lock/unlock** as a distinct concept from active/inactive
+  isn't separately modeled — deactivating a Staff Account already
+  prevents login, which covers the same practical need.
+
 ## Live deployment
 
 - **GitHub Pages:** https://navarshabeer768-arch.github.io/vansales-erp-pwa/
@@ -226,7 +265,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0023). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0024). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn

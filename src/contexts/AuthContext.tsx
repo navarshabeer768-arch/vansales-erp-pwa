@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { generateSyntheticEmail } from '@/lib/syntheticEmail';
+import { getDeviceId, getDeviceLabel } from '@/lib/deviceId';
 import type { AppUser, Company, RoleCode } from '@/types/database';
 
 interface AuthState {
@@ -104,13 +105,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       p_store_id: storeId, p_username: username,
     });
     if (resolveError || !email) {
+      await supabase.rpc('log_login_attempt', {
+        p_store_id: storeId, p_username: username, p_success: false, p_device_info: getDeviceLabel(),
+      });
       return { error: 'Invalid Store ID, username, or password.' };
     }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    await supabase.rpc('log_login_attempt', {
+      p_store_id: storeId, p_username: username, p_success: !error, p_device_info: getDeviceLabel(),
+    });
     if (error) {
       // Never reveal whether the store/username existed — same generic message either way.
       return { error: 'Invalid Store ID, username, or password.' };
     }
+    await supabase.rpc('register_device', { p_device_id: getDeviceId() });
     return { error: null };
   }, []);
 
