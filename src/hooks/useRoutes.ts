@@ -7,7 +7,12 @@ export interface RouteRow {
   company_id: string;
   code: string;
   name: string;
-  frequency: 'daily' | 'weekly' | 'monthly';
+  frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
+  area: string | null;
+  region: string | null;
+  priority: 'low' | 'medium' | 'high';
+  distance_km: number | null;
+  estimated_time_minutes: number | null;
   van_id: string | null;
   salesman_id: string | null;
   is_active: boolean;
@@ -24,6 +29,9 @@ export interface RouteCustomer {
   customer_id: string;
   visit_sequence: number;
   day_of_week: number | null;
+  visit_frequency: 'daily' | 'weekly' | 'monthly' | 'custom';
+  day_of_month: number | null;
+  custom_notes: string | null;
   customer?: { id: string; business_name: string; address: string | null } | null;
 }
 
@@ -100,11 +108,19 @@ export function useRouteCustomers(routeId: string | null) {
     return { error: error?.message ?? null };
   }, [load]);
 
+  const updateFrequency = useCallback(async (id: string, visitFrequency: RouteCustomer['visit_frequency'], dayOfMonth?: number | null) => {
+    const { error } = await supabase.from('route_customers').update({
+      visit_frequency: visitFrequency, day_of_month: dayOfMonth ?? null,
+    }).eq('id', id);
+    if (!error) await load();
+    return { error: error?.message ?? null };
+  }, [load]);
+
   const removeCustomer = useCallback(async (id: string) => {
     const { error } = await supabase.from('route_customers').delete().eq('id', id);
     if (!error) await load();
     return { error: error?.message ?? null };
   }, [load]);
 
-  return { assignments, loading, reload: load, addCustomer, updateSequence, removeCustomer };
+  return { assignments, loading, reload: load, addCustomer, updateSequence, updateFrequency, removeCustomer };
 }

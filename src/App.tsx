@@ -40,6 +40,9 @@ import { ReturnsPage } from '@/pages/Returns/ReturnsPage';
 import { PaymentsPage } from '@/pages/Payments/PaymentsPage';
 import { GpsTrackingPage } from '@/pages/Gps/GpsTrackingPage';
 import { StaffPage } from '@/pages/HR/StaffPage';
+import { HRHomePage } from '@/pages/HR/HRHomePage';
+import { DriverManagementPage } from '@/pages/HR/DriverManagementPage';
+import { SalesmanManagementPage } from '@/pages/HR/SalesmanManagementPage';
 import { RoutesPage } from '@/pages/Routes/RoutesPage';
 import { VisitsPage } from '@/pages/Routes/VisitsPage';
 import { PurchasesHomePage } from '@/pages/Purchases/PurchasesHomePage';
@@ -134,7 +137,11 @@ export default function App() {
                 <ReportsPage />
               </Suspense>
             } />
-            <Route path="hr" element={<StaffPage />} />
+            <Route path="hr" element={<HRHomePage />}>
+              <Route index element={<StaffPage />} />
+              <Route path="drivers" element={<DriverManagementPage />} />
+              <Route path="salesmen" element={<SalesmanManagementPage />} />
+            </Route>
             <Route path="gps" element={<GpsTrackingPage />} />
             <Route path="settings" element={<SettingsHomePage />}>
               <Route index element={<CompanySettingsPage />} />

@@ -15,7 +15,12 @@ import { useToast } from '@/contexts/ToastContext';
 const schema = z.object({
   code: z.string().min(1, 'Code is required').max(20),
   name: z.string().min(1, 'Name is required').max(150),
-  frequency: z.enum(['daily', 'weekly', 'monthly']),
+  frequency: z.enum(['daily', 'weekly', 'monthly', 'custom']),
+  area: z.string().max(100).optional().or(z.literal('')),
+  region: z.string().max(100).optional().or(z.literal('')),
+  priority: z.enum(['low', 'medium', 'high']),
+  distance_km: z.coerce.number().min(0).optional(),
+  estimated_time_minutes: z.coerce.number().min(0).optional(),
   van_id: z.string().optional().or(z.literal('')),
   salesman_id: z.string().optional().or(z.literal('')),
   is_active: z.boolean(),
@@ -31,13 +36,18 @@ function RouteForm({ initial, onSubmit, onCancel }: {
   const { salesmen } = useSalesmenAndDrivers();
   const { register, handleSubmit, reset, formState: { errors, isSubmitting }, setError } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { code: '', name: '', frequency: 'daily', van_id: '', salesman_id: '', is_active: true },
+    defaultValues: {
+      code: '', name: '', frequency: 'daily', area: '', region: '', priority: 'medium',
+      van_id: '', salesman_id: '', is_active: true,
+    },
   });
 
   useEffect(() => {
     if (initial) {
       reset({
         code: initial.code, name: initial.name, frequency: initial.frequency,
+        area: initial.area ?? '', region: initial.region ?? '', priority: initial.priority,
+        distance_km: initial.distance_km ?? undefined, estimated_time_minutes: initial.estimated_time_minutes ?? undefined,
         van_id: initial.van_id ?? '', salesman_id: initial.salesman_id ?? '', is_active: initial.is_active,
       });
     }
@@ -46,6 +56,8 @@ function RouteForm({ initial, onSubmit, onCancel }: {
   const submit = async (v: FormValues) => {
     const { error } = await onSubmit({
       code: v.code, name: v.name, frequency: v.frequency,
+      area: v.area || null, region: v.region || null, priority: v.priority,
+      distance_km: v.distance_km ?? null, estimated_time_minutes: v.estimated_time_minutes ?? null,
       van_id: v.van_id || null, salesman_id: v.salesman_id || null, is_active: v.is_active,
     });
     if (error) setError('code', { message: error });
@@ -72,6 +84,7 @@ function RouteForm({ initial, onSubmit, onCancel }: {
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
+            <option value="custom">Custom</option>
           </select>
         </div>
         <div>
@@ -89,6 +102,34 @@ function RouteForm({ initial, onSubmit, onCancel }: {
           </select>
         </div>
       </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="label">Area</label>
+          <input className="input" {...register('area')} />
+        </div>
+        <div>
+          <label className="label">Region</label>
+          <input className="input" {...register('region')} />
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="label">Priority</label>
+          <select className="input" {...register('priority')}>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div>
+          <label className="label">Distance (km)</label>
+          <input type="number" step="0.1" className="input" {...register('distance_km')} />
+        </div>
+        <div>
+          <label className="label">Est. time (min)</label>
+          <input type="number" className="input" {...register('estimated_time_minutes')} />
+        </div>
+      </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" {...register('is_active')} /> Active
       </label>
@@ -103,7 +144,7 @@ function RouteForm({ initial, onSubmit, onCancel }: {
 }
 
 function ManageCustomersModal({ route, onClose }: { route: RouteRow | null; onClose: () => void }) {
-  const { assignments, loading, addCustomer, updateSequence, removeCustomer } = useRouteCustomers(route?.id ?? null);
+  const { assignments, loading, addCustomer, updateSequence, updateFrequency, removeCustomer } = useRouteCustomers(route?.id ?? null);
   const { customers } = useCustomers();
   const { push } = useToast();
 
@@ -131,7 +172,7 @@ function ManageCustomersModal({ route, onClose }: { route: RouteRow | null; onCl
         ) : (
           <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
             <table className="table-base">
-              <thead><tr><th>Seq.</th><th>Customer</th><th>Address</th><th></th></tr></thead>
+              <thead><tr><th>Seq.</th><th>Customer</th><th>Address</th><th>Visit frequency</th><th></th></tr></thead>
               <tbody>
                 {assignments.map((a) => (
                   <tr key={a.id}>
@@ -143,6 +184,17 @@ function ManageCustomersModal({ route, onClose }: { route: RouteRow | null; onCl
                     </td>
                     <td className="font-medium">{a.customer?.business_name}</td>
                     <td className="text-slate-500">{a.customer?.address ?? '—'}</td>
+                    <td>
+                      <select
+                        className="input !w-28 !py-1.5" value={a.visit_frequency}
+                        onChange={(e) => updateFrequency(a.id, e.target.value as typeof a.visit_frequency)}
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </td>
                     <td><button onClick={() => removeCustomer(a.id)} className="text-slate-400 hover:text-red-600"><Trash2 size={16} /></button></td>
                   </tr>
                 ))}
@@ -184,6 +236,10 @@ export function RoutesPage() {
       <div><p className="font-medium">{r.name}</p><p className="text-xs text-slate-500">{r.code}</p></div>
     ) },
     { key: 'frequency', header: 'Frequency', render: (r) => <span className="capitalize">{r.frequency}</span> },
+    { key: 'area', header: 'Area / Region', render: (r) => [r.area, r.region].filter(Boolean).join(' / ') || '—' },
+    { key: 'priority', header: 'Priority', render: (r) => (
+      <span className={r.priority === 'high' ? 'badge-red' : r.priority === 'low' ? 'badge-slate' : 'badge-amber'}>{r.priority}</span>
+    ) },
     { key: 'van', header: 'Van', render: (r) => r.van?.name ?? '—' },
     { key: 'salesman', header: 'Salesman', render: (r) => r.salesman?.full_name ?? '—' },
     { key: 'status', header: 'Status', render: (r) => <span className={r.is_active ? 'badge-green' : 'badge-slate'}>{r.is_active ? 'Active' : 'Inactive'}</span> },
@@ -224,11 +280,11 @@ export function RoutesPage() {
           </PermissionGate>
         </div>
       ) : (
-        <DataTable columns={columns} rows={routes} rowKey={(r) => r.id} loading={loading}
+        <DataTable columns={columns} rows={routes} rowKey={(r) => r.id} loading={loading} exportFilename="routes"
           searchPlaceholder="Search routes…" searchFn={(r, q) => r.name.toLowerCase().includes(q) || r.code.toLowerCase().includes(q)} />
       )}
 
-      <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit route' : 'New route'}>
+      <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'Edit route' : 'New route'} size="lg">
         <RouteForm initial={editing} onSubmit={handleSubmit} onCancel={() => setFormOpen(false)} />
       </Modal>
 

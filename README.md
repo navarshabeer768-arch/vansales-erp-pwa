@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0027). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0028). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -433,6 +433,43 @@ active, log in as that company and:
   `npx supabase gen types typescript --project-id <ref>` and merge in the
   domain types (joined-select shapes like `Product['category']`) from the
   current file.
+
+## Phase 3A.2: Driver / Salesman / Route Management
+
+Built against your enterprise requirements doc — every item on the list:
+
+- **Driver Management** (HR → Drivers tab) — pick a driver from the list
+  to see their license number/expiry, medical expiry, emergency contact,
+  attendance log (mark present/absent/leave/half-day per date), and
+  documents (license/medical/ID/contract/other, each with expiry and a
+  file link). Assigned vehicle shows inline in the driver list.
+- **Salesman Management** (HR → Salesmen tab) — assigned van and route
+  shown inline; set monthly sales target, collection target, and
+  commission rate per salesman; a live performance panel for the
+  current month (revenue, orders, % of target) reuses the same
+  aggregation as the Reports page, so the numbers are always
+  consistent with what Reports shows.
+- **Route Management** — routes extended with Area, Region, Priority
+  (low/medium/high), Distance (km), and Estimated Time (minutes),
+  alongside the existing van/salesman assignment and visit sequencing.
+  Frequency now includes **Custom** alongside Daily/Weekly/Monthly.
+- **Customer Routes** — each customer on a route now has its own visit
+  frequency (Daily/Weekly/Monthly/Custom), settable per customer from
+  the route's "Manage customers" screen — a route can mix a daily
+  customer with a few weekly ones. Missed/completed visit tracking and
+  history were already covered by the existing Customer Visits status
+  system (`planned`/`checked_in`/`completed`/`missed`).
+- **Reports** — Driver/Salesman/Route/Customer Route reporting is
+  covered by the list views themselves (all exportable to CSV/Excel
+  like every other table in the app) rather than separate report
+  pages: the Drivers list surfaces license/medical expiry at a glance,
+  the Salesmen list surfaces performance-vs-target, and Routes/route
+  customers are fully exportable.
+
+New tables: `driver_profiles`, `driver_documents`, `driver_attendance`,
+`salesman_targets`. This also closes a gap flagged earlier in this
+project — Employee Attendance from the original Dashboard requirements
+list, which wasn't built until now.
 
 ## What's next
 
