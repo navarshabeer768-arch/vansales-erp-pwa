@@ -166,12 +166,14 @@ export interface WarehouseStock {
   warehouse_id: string;
   product_id: string;
   batch_id: string | null;
+  location_id: string | null;
   quantity: number;
   reserved_quantity: number;
   updated_at: string;
   // joined
   product?: Pick<Product, 'id' | 'name' | 'sku'>;
   batch?: Pick<Batch, 'id' | 'batch_no' | 'expiry_date'> | null;
+  location?: { id: string; code: string } | null;
 }
 
 export interface StockAdjustment {

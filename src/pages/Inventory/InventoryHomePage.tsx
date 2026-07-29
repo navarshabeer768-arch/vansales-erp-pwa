@@ -4,6 +4,7 @@ import clsx from 'clsx';
 const TABS = [
   { to: '/inventory', label: 'Products', end: true },
   { to: '/inventory/catalog', label: 'Catalog settings', end: false },
+  { to: '/inventory/serials', label: 'Serial Numbers', end: false },
 ];
 
 export function InventoryHomePage() {

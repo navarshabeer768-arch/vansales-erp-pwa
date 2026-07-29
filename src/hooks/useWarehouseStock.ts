@@ -14,7 +14,7 @@ export function useWarehouseStock(warehouseId: string | null) {
     setLoading(true);
     const { data, error: err } = await supabase
       .from('warehouse_stock')
-      .select('*, product:products(id,name,sku), batch:batches(id,batch_no,expiry_date)')
+      .select('*, product:products(id,name,sku), batch:batches(id,batch_no,expiry_date), location:warehouse_locations(id,code)')
       .eq('company_id', company.id)
       .eq('warehouse_id', warehouseId)
       .order('quantity', { ascending: true });

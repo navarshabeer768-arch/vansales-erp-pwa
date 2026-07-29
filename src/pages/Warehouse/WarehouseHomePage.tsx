@@ -3,6 +3,7 @@ import clsx from 'clsx';
 
 const TABS = [
   { to: '/warehouse', label: 'Warehouses', end: true },
+  { to: '/warehouse/locations', label: 'Locations', end: false },
   { to: '/warehouse/transfers', label: 'Stock Transfers', end: false },
 ];
 

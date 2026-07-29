@@ -19,8 +19,10 @@ import { DashboardPage } from '@/pages/Dashboard/DashboardPage';
 import { InventoryHomePage } from '@/pages/Inventory/InventoryHomePage';
 import { ProductsPage } from '@/pages/Inventory/ProductsPage';
 import { CatalogSettingsPage } from '@/pages/Inventory/CatalogSettingsPage';
+import { SerialsPage } from '@/pages/Inventory/SerialsPage';
 import { WarehousesPage } from '@/pages/Warehouse/WarehousesPage';
 import { WarehouseHomePage } from '@/pages/Warehouse/WarehouseHomePage';
+import { WarehouseLocationsPage } from '@/pages/Warehouse/WarehouseLocationsPage';
 import { StockTransferPage } from '@/pages/Warehouse/StockTransferPage';
 import { StockPage } from '@/pages/Warehouse/StockPage';
 import { StockAdjustmentPage } from '@/pages/Warehouse/StockAdjustmentPage';
@@ -81,10 +83,12 @@ export default function App() {
             <Route path="inventory" element={<InventoryHomePage />}>
               <Route index element={<ProductsPage />} />
               <Route path="catalog" element={<CatalogSettingsPage />} />
+              <Route path="serials" element={<SerialsPage />} />
             </Route>
 
             <Route path="warehouse" element={<WarehouseHomePage />}>
               <Route index element={<WarehousesPage />} />
+              <Route path="locations" element={<WarehouseLocationsPage />} />
               <Route path="transfers" element={<StockTransferPage />} />
             </Route>
             <Route path="warehouse/stock/:warehouseId" element={<StockPage />} />

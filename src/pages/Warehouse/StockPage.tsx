@@ -3,6 +3,8 @@ import { ArrowLeft, ClipboardList } from 'lucide-react';
 import { differenceInCalendarDays } from 'date-fns';
 import { useWarehouses } from '@/hooks/useWarehouses';
 import { useWarehouseStock } from '@/hooks/useWarehouseStock';
+import { useWarehouseLocations, assignStockLocation } from '@/hooks/useWarehouseLocations';
+import { useToast } from '@/contexts/ToastContext';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import type { WarehouseStock } from '@/types/database';
 import { PermissionGate } from '@/components/common/PermissionGate';
@@ -18,14 +20,31 @@ function expiryBadge(expiryDate: string | null | undefined) {
 export function StockPage() {
   const { warehouseId } = useParams<{ warehouseId: string }>();
   const { warehouses } = useWarehouses();
-  const { stock, loading } = useWarehouseStock(warehouseId ?? null);
+  const { stock, loading, reload } = useWarehouseStock(warehouseId ?? null);
+  const { locations } = useWarehouseLocations(warehouseId ?? null);
+  const { push } = useToast();
   const warehouse = warehouses.find((w) => w.id === warehouseId);
+
+  const handleAssignLocation = async (stockId: string, locationId: string) => {
+    const { error } = await assignStockLocation(stockId, locationId || null);
+    push(error ? 'error' : 'success', error ?? 'Location updated.');
+    if (!error) reload();
+  };
 
   const columns: Column<WarehouseStock>[] = [
     { key: 'product', header: 'Product', sortValue: (r) => r.product?.name ?? '', render: (r) => (
       <div><p className="font-medium">{r.product?.name}</p><p className="text-xs text-slate-500">{r.product?.sku}</p></div>
     ) },
     { key: 'batch', header: 'Batch', render: (r) => r.batch?.batch_no ?? '—' },
+    { key: 'location', header: 'Location', render: (r) => (
+      <select
+        className="input !w-32 !py-1.5" value={r.location_id ?? ''}
+        onChange={(e) => handleAssignLocation(r.id, e.target.value)}
+      >
+        <option value="">— None —</option>
+        {locations.map((loc) => <option key={loc.id} value={loc.id}>{loc.code}</option>)}
+      </select>
+    ) },
     { key: 'expiry', header: 'Expiry', render: (r) => expiryBadge(r.batch?.expiry_date) ?? '—' },
     { key: 'quantity', header: 'On hand', sortValue: (r) => r.quantity, render: (r) => (
       <span className={r.quantity <= 0 ? 'font-semibold text-red-600' : 'font-semibold'}>{r.quantity}</span>
