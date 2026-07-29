@@ -5,7 +5,6 @@ import { ProtectedRoute } from '@/components/common/ProtectedRoute';
 import { PlatformProtectedRoute } from '@/components/common/PlatformProtectedRoute';
 import { ApprovalGate } from '@/components/common/ApprovalGate';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
-import { PlaceholderPage } from '@/components/common/PlaceholderPage';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { LoginPage } from '@/pages/Auth/LoginPage';
 import { RegisterPage } from '@/pages/Auth/RegisterPage';
@@ -34,6 +33,7 @@ import { CollectionsPage } from '@/pages/Collections/CollectionsPage';
 import { ReturnsPage } from '@/pages/Returns/ReturnsPage';
 import { PaymentsPage } from '@/pages/Payments/PaymentsPage';
 import { GpsTrackingPage } from '@/pages/Gps/GpsTrackingPage';
+import { StaffPage } from '@/pages/HR/StaffPage';
 import { RoutesPage } from '@/pages/Routes/RoutesPage';
 import { VisitsPage } from '@/pages/Routes/VisitsPage';
 import { PurchasesHomePage } from '@/pages/Purchases/PurchasesHomePage';
@@ -113,7 +113,7 @@ export default function App() {
                 <ReportsPage />
               </Suspense>
             } />
-            <Route path="hr" element={<PlaceholderPage title="HR" />} />
+            <Route path="hr" element={<StaffPage />} />
             <Route path="gps" element={<GpsTrackingPage />} />
             <Route path="settings" element={<CompanySettingsPage />} />
             </Route>

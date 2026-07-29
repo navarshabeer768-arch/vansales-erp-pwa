@@ -152,9 +152,14 @@ React + TypeScript + Tailwind + Supabase.
     every van's last-known position with a live indicator and a
     one-tap Google Maps link.
 
-Only **HR** (thin CRUD beyond what signup/platform admin already
-covers) has a route stubbed in `App.tsx` — everything else from the
-original spec is now built.
+- **Fully working: HR** — Staff Accounts within a company: add a new
+  staff login (same ephemeral-client pattern as Platform Admin's "New
+  company," so it never hijacks the creating admin's own session),
+  assign any of the 10 roles, deactivate/reactivate, and a one-time
+  credential handoff screen with Username + Password to give the new
+  hire (they'll also need the company's Store ID to sign in).
+
+Every module from the original spec is now built.
 
 ## Live deployment
 
@@ -296,14 +301,19 @@ active, log in as that company and:
   domain types (joined-select shapes like `Product['category']`) from the
   current file.
 
-## What's next (build order recommendation)
+## What's next
 
-1. **HR module** — thin CRUD over `app_users` (currently only
-   creatable via signup/platform admin) plus whatever HR fields you
-   want to track beyond role/employee_code (attendance, leave,
-   payroll are not in the schema yet and would need new tables).
-2. Platform admin / SaaS polish, per your earlier notes — revisit
-   whenever you're ready.
+Every module from the original spec is built and working. The only
+open item is the Platform Admin / SaaS-side polish from earlier in
+this project's history, whenever you're ready to revisit it. Beyond
+that, natural next steps if you want to keep extending:
+- Attendance/leave/payroll tables (not in the schema yet — HR currently
+  covers accounts/roles, not time tracking).
+- A live map view for GPS Tracking (currently a Google Maps link per
+  van; an embedded map with all vans plotted together would need a
+  maps API key and a small integration).
+- Multi-language / RTL support for Arabic-speaking staff, if useful
+  for GCC deployments.
 3. **PDT hardware layer** — barcode scanning (camera-based, works on any
    PDT with a rear camera without native code), Bluetooth/thermal
    printing (Web Bluetooth + ESC/POS command generation for 58mm/80mm
