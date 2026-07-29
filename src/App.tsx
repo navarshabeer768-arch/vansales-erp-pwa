@@ -20,6 +20,7 @@ import { InventoryHomePage } from '@/pages/Inventory/InventoryHomePage';
 import { ProductsPage } from '@/pages/Inventory/ProductsPage';
 import { CatalogSettingsPage } from '@/pages/Inventory/CatalogSettingsPage';
 import { SerialsPage } from '@/pages/Inventory/SerialsPage';
+const LabelPrintingPage = lazy(() => import('@/pages/Inventory/LabelPrintingPage').then((m) => ({ default: m.LabelPrintingPage })));
 import { WarehousesPage } from '@/pages/Warehouse/WarehousesPage';
 import { WarehouseHomePage } from '@/pages/Warehouse/WarehouseHomePage';
 import { WarehouseLocationsPage } from '@/pages/Warehouse/WarehouseLocationsPage';
@@ -84,6 +85,11 @@ export default function App() {
               <Route index element={<ProductsPage />} />
               <Route path="catalog" element={<CatalogSettingsPage />} />
               <Route path="serials" element={<SerialsPage />} />
+              <Route path="labels" element={
+                <Suspense fallback={<LoadingScreen label="Loading label printing…" />}>
+                  <LabelPrintingPage />
+                </Suspense>
+              } />
             </Route>
 
             <Route path="warehouse" element={<WarehouseHomePage />}>
