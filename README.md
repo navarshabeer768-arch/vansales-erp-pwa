@@ -238,6 +238,40 @@ than glossed over:**
   isn't separately modeled — deactivating a Staff Account already
   prevents login, which covers the same practical need.
 
+**Inventory Phase 2** (from your enterprise requirements doc):
+- **Stock Transfers** (Warehouse → Warehouse → Stock Transfers tab) —
+  the backend for this (`warehouse_transfers` table + the atomic
+  `approve_warehouse_transfer` RPC) existed since Phase 1 but had no
+  page. Built now: pick source/destination warehouse, add products from
+  live source-warehouse stock (capped at what's available), submit,
+  approve — both warehouses' stock update atomically.
+- **Bulk product import via CSV** — Inventory → Products → Import CSV.
+  Downloads a template, validates every row client-side before
+  importing (unit symbol must already exist, category/brand matched by
+  name if given), shows per-row pass/fail, and imports row-by-row so one
+  bad row (duplicate SKU, unknown unit) doesn't abort the whole batch.
+
+**Still not built from this phase**, flagged rather than glossed over:
+- **Warehouse locations** (zone/rack/shelf/bin) — not in the schema at
+  all; every stock row currently only knows its warehouse, not a
+  position within it.
+- **Serial Number management UI** — `product_serials` table exists,
+  no screens to generate/track/search serials.
+- **Barcode/QR label printing** — camera scanning (input) works; there's
+  no printable barcode/QR label generator (output) yet.
+- **Product Variants UI** — `product_variants` table exists, no screens.
+- **Excel import/export** — CSV import/export is done; XLSX would need
+  a real parsing library (SheetJS) and is only worth adding if you
+  specifically need to accept files from Excel users who won't export
+  to CSV first.
+- **FIFO enforcement** — batches are tracked and selectable, but nothing
+  currently forces the *oldest* batch to be picked first automatically
+  during a sale/loading; the salesperson picks the batch manually.
+- **Warehouse types, capacity, manager assignment, supplier ratings,
+  brand logos/country/website, category images/icons/sorting** — all
+  cosmetic/organizational fields on top of what already exists, not
+  functionally blocking anything.
+
 ## Live deployment
 
 - **GitHub Pages:** https://navarshabeer768-arch.github.io/vansales-erp-pwa/

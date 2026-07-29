@@ -20,6 +20,8 @@ import { InventoryHomePage } from '@/pages/Inventory/InventoryHomePage';
 import { ProductsPage } from '@/pages/Inventory/ProductsPage';
 import { CatalogSettingsPage } from '@/pages/Inventory/CatalogSettingsPage';
 import { WarehousesPage } from '@/pages/Warehouse/WarehousesPage';
+import { WarehouseHomePage } from '@/pages/Warehouse/WarehouseHomePage';
+import { StockTransferPage } from '@/pages/Warehouse/StockTransferPage';
 import { StockPage } from '@/pages/Warehouse/StockPage';
 import { StockAdjustmentPage } from '@/pages/Warehouse/StockAdjustmentPage';
 import { VanLoadingHomePage } from '@/pages/Van/VanLoadingHomePage';
@@ -81,7 +83,10 @@ export default function App() {
               <Route path="catalog" element={<CatalogSettingsPage />} />
             </Route>
 
-            <Route path="warehouse" element={<WarehousesPage />} />
+            <Route path="warehouse" element={<WarehouseHomePage />}>
+              <Route index element={<WarehousesPage />} />
+              <Route path="transfers" element={<StockTransferPage />} />
+            </Route>
             <Route path="warehouse/stock/:warehouseId" element={<StockPage />} />
             <Route path="warehouse/adjustments/:warehouseId" element={<StockAdjustmentPage />} />
 

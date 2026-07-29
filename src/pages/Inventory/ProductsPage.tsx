@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Pencil, Ban, PackageX } from 'lucide-react';
+import { Plus, Pencil, Ban, PackageX, Upload } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import type { Product } from '@/types/database';
 import { DataTable, Column } from '@/components/ui/DataTable';
@@ -8,12 +8,14 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 import { ProductForm } from './ProductForm';
+import { ImportProductsModal } from './ImportProductsModal';
 import type { ProductInput } from '@/hooks/useProducts';
 
 export function ProductsPage() {
-  const { products, loading, createProduct, updateProduct, deactivateProduct } = useProducts();
+  const { products, loading, createProduct, updateProduct, deactivateProduct, reload } = useProducts();
   const { push } = useToast();
   const [formOpen, setFormOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [toDeactivate, setToDeactivate] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
@@ -98,9 +100,14 @@ export function ProductsPage() {
           <p className="text-sm text-slate-500">Catalog, pricing, and stock control settings.</p>
         </div>
         <PermissionGate permission="inventory:create">
-          <button className="btn-primary" onClick={openCreate}>
-            <Plus size={16} /> New product
-          </button>
+          <div className="flex gap-2">
+            <button className="btn-secondary" onClick={() => setImportOpen(true)}>
+              <Upload size={16} /> Import CSV
+            </button>
+            <button className="btn-primary" onClick={openCreate}>
+              <Plus size={16} /> New product
+            </button>
+          </div>
         </PermissionGate>
       </div>
 
@@ -142,6 +149,8 @@ export function ProductsPage() {
         onConfirm={handleDeactivate}
         onCancel={() => setToDeactivate(null)}
       />
+
+      <ImportProductsModal open={importOpen} onClose={() => setImportOpen(false)} onImported={reload} />
     </div>
   );
 }

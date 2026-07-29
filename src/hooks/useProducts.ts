@@ -54,7 +54,23 @@ export function useProducts() {
     return { error: mapError(err) };
   }, [load]);
 
-  return { products, loading, error, reload: load, createProduct, updateProduct, deactivateProduct };
+  const importProducts = useCallback(async (rows: ProductInput[]) => {
+    if (!company) return { successCount: 0, errors: ['No company context'] };
+    const errors: string[] = [];
+    let successCount = 0;
+    // Insert one at a time so a single bad row (duplicate SKU, bad unit)
+    // doesn't abort the whole batch — matches how a real import wizard
+    // should behave (report per-row failures, keep going).
+    for (let i = 0; i < rows.length; i++) {
+      const { error: err } = await supabase.from('products').insert({ ...rows[i], company_id: company.id });
+      if (err) errors.push(`Row ${i + 2} (${rows[i].sku}): ${mapError(err)}`);
+      else successCount++;
+    }
+    await load();
+    return { successCount, errors };
+  }, [company, load]);
+
+  return { products, loading, error, reload: load, createProduct, updateProduct, deactivateProduct, importProducts };
 }
 
 function mapError(err: { message: string; code?: string } | null): string | null {
