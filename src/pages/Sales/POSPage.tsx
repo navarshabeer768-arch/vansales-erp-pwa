@@ -79,7 +79,13 @@ export function POSPage() {
         (s.product?.name ?? '').toLowerCase().includes(q) ||
         (s.product?.sku ?? '').toLowerCase().includes(q)
       )
-    ).slice(0, 8);
+    ).sort((a, b) => {
+      // FIFO / expiry priority: oldest-expiring batch of a given product surfaces
+      // first, so pressing Enter (which adds matches[0]) naturally sells oldest stock first.
+      const aExp = a.batch?.expiry_date ? new Date(a.batch.expiry_date).getTime() : Infinity;
+      const bExp = b.batch?.expiry_date ? new Date(b.batch.expiry_date).getTime() : Infinity;
+      return aExp - bExp;
+    }).slice(0, 8);
   }, [search, vanStock, vanId]);
 
   const totals = calculateCartTotals(cart);

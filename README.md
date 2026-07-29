@@ -238,39 +238,61 @@ than glossed over:**
   isn't separately modeled — deactivating a Staff Account already
   prevents login, which covers the same practical need.
 
-**Inventory Phase 2** (from your enterprise requirements doc):
-- **Stock Transfers** (Warehouse → Warehouse → Stock Transfers tab) —
-  the backend for this (`warehouse_transfers` table + the atomic
-  `approve_warehouse_transfer` RPC) existed since Phase 1 but had no
-  page. Built now: pick source/destination warehouse, add products from
-  live source-warehouse stock (capped at what's available), submit,
-  approve — both warehouses' stock update atomically.
-- **Bulk product import via CSV** — Inventory → Products → Import CSV.
-  Downloads a template, validates every row client-side before
-  importing (unit symbol must already exist, category/brand matched by
-  name if given), shows per-row pass/fail, and imports row-by-row so one
-  bad row (duplicate SKU, unknown unit) doesn't abort the whole batch.
+**Inventory Phase 2** (from your enterprise requirements doc) — every
+item on the list is now built:
+- **Stock Transfers** (Warehouse → Stock Transfers tab) — the atomic
+  backend (`warehouse_transfers` + `approve_warehouse_transfer`) existed
+  since Phase 1 but had no page; built now.
+- **Warehouse Locations** (Warehouse → Locations tab) — Zone/Rack/Shelf/
+  Bin CRUD with a generated location code, assignable to any warehouse
+  stock row from the Stock page.
+- **Product Variants** (Inventory → Products → Layers icon per row) —
+  name, SKU suffix, price adjustment, barcode, image URL, plus a
+  per-warehouse variant stock counter with its own adjust RPC. This is
+  kept deliberately separate from the core `warehouse_stock`/`van_stock`
+  tables and their FIFO/batch movement engine rather than threading
+  `variant_id` through every existing stock RPC (loading, sales,
+  adjustments, transfers, receiving) — that would be a much larger,
+  riskier change to already-working code. Variant stock here is a
+  simple counter; it doesn't get batch/expiry tracking or FIFO
+  allocation the way plain product stock does.
+- **Serial Number Management** (Inventory → Serial Numbers tab) —
+  register serials with a warranty period, exact-match search showing
+  full history (product, status, customer, invoice, sold-at), mark
+  damaged/lost. `sell_serial()` stamps warranty expiry and links the
+  sale/customer at time of sale (not yet called from the POS checkout
+  flow itself — that wiring, linking a specific serial to a specific
+  sale at checkout, is the one piece of this still worth doing next if
+  you sell serialized items through the van).
+- **Barcode/QR Label Printing** (Inventory → Label Printing tab) — a
+  real Code 39 barcode encoder (self-contained, no dependency) and QR
+  generation, in 58mm/80mm thermal-roll or A4 3-across sheet templates,
+  for both **Product Labels** and **Batch Labels** (batch # + expiry).
+  Printed via the browser's own print dialog — the standard approach
+  for label printers (driver-based), unlike receipt printers which
+  commonly talk raw Bluetooth ESC/POS.
+- **Excel Import/Export** (alongside CSV, which was already done) —
+  `excelIO.ts` via SheetJS; every table's Export button now offers both
+  CSV and Excel, and product import accepts `.xlsx`/`.xls` alongside
+  `.csv`. The `xlsx` library is genuinely heavy (~425KB) and is
+  dynamically imported only at the moment it's actually used, so it
+  never loads for anyone who doesn't touch that feature.
+- **FIFO Enforcement / Automatic Batch Selection / Expiry Priority /
+  Stock Allocation Engine** — `allocate_stock_fifo()` picks batches
+  oldest-expiry-first (falling back to oldest-created for non-expiry
+  stock) to satisfy a requested quantity. Wired into: **Van Loading**
+  (an "Auto-add by quantity (FIFO)" section that splits a requested
+  quantity across batches automatically, alongside the existing manual
+  exact-batch picker for anyone who wants to override it) and **POS**
+  (search results are sorted oldest-batch-first, so the default
+  Enter-to-add action naturally sells expiring stock before fresher
+  stock, without removing the salesperson's ability to see and choose
+  a different batch if they need to).
 
-**Still not built from this phase**, flagged rather than glossed over:
-- **Warehouse locations** (zone/rack/shelf/bin) — not in the schema at
-  all; every stock row currently only knows its warehouse, not a
-  position within it.
-- **Serial Number management UI** — `product_serials` table exists,
-  no screens to generate/track/search serials.
-- **Barcode/QR label printing** — camera scanning (input) works; there's
-  no printable barcode/QR label generator (output) yet.
-- **Product Variants UI** — `product_variants` table exists, no screens.
-- **Excel import/export** — CSV import/export is done; XLSX would need
-  a real parsing library (SheetJS) and is only worth adding if you
-  specifically need to accept files from Excel users who won't export
-  to CSV first.
-- **FIFO enforcement** — batches are tracked and selectable, but nothing
-  currently forces the *oldest* batch to be picked first automatically
-  during a sale/loading; the salesperson picks the batch manually.
-- **Warehouse types, capacity, manager assignment, supplier ratings,
-  brand logos/country/website, category images/icons/sorting** — all
-  cosmetic/organizational fields on top of what already exists, not
-  functionally blocking anything.
+Still not covered from the broader Phase 2 wishlist, and genuinely just
+cosmetic/organizational rather than functionally blocking anything:
+warehouse types/capacity/manager assignment, supplier ratings, brand
+logos/country/website, category images/icons/sort order.
 
 ## Live deployment
 
@@ -299,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0024). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0026). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn

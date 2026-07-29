@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Plus, Check, Trash2 } from 'lucide-react';
+import { Plus, Check, Trash2, Zap } from 'lucide-react';
 import { useVans } from '@/hooks/useVans';
 import { useWarehouses } from '@/hooks/useWarehouses';
 import { useWarehouseStock } from '@/hooks/useWarehouseStock';
 import { useVanLoadings, VanLoadingItemDraft, VanLoading } from '@/hooks/useVanLoadings';
+import { useStockAllocation } from '@/hooks/useStockAllocation';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -22,6 +23,31 @@ function NewLoadingModal({ open, onClose, onCreated }: { open: boolean; onClose:
   const [submitting, setSubmitting] = useState(false);
 
   const { stock } = useWarehouseStock(warehouseId || null);
+  const { allocating, allocateFifo } = useStockAllocation();
+  const [fifoProductId, setFifoProductId] = useState('');
+  const [fifoQuantity, setFifoQuantity] = useState(1);
+
+  // Unique products available in this warehouse (batches are chosen automatically by FIFO/expiry priority).
+  const uniqueProducts = Array.from(
+    new Map(stock.filter((s) => s.quantity > 0).map((s) => [s.product_id, s.product])).entries()
+  ).map(([id, product]) => ({ id, product }));
+
+  const addRowsFromFifo = async () => {
+    if (!fifoProductId || fifoQuantity <= 0) { push('error', 'Select a product and a quantity.'); return; }
+    const { allocations, error } = await allocateFifo('warehouse', warehouseId, fifoProductId, fifoQuantity);
+    if (error) { push('error', error); return; }
+    setRows((prev) => {
+      const next = [...prev];
+      for (const a of allocations) {
+        const existingIdx = next.findIndex((r) => r.product_id === fifoProductId && r.batch_id === a.batch_id);
+        if (existingIdx >= 0) next[existingIdx] = { ...next[existingIdx], quantity_requested: next[existingIdx].quantity_requested + a.allocated_quantity };
+        else next.push({ product_id: fifoProductId, batch_id: a.batch_id, quantity_requested: a.allocated_quantity });
+      }
+      return next;
+    });
+    push('success', `Allocated ${fifoQuantity} across ${allocations.length} batch${allocations.length === 1 ? '' : 'es'} (oldest expiry first).`);
+    setFifoProductId(''); setFifoQuantity(1);
+  };
 
   const addRow = (stockId: string) => {
     const s = stock.find((x) => x.id === stockId);
@@ -32,7 +58,7 @@ function NewLoadingModal({ open, onClose, onCreated }: { open: boolean; onClose:
   const updateQty = (idx: number, qty: number) => setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, quantity_requested: qty } : r)));
   const removeRow = (idx: number) => setRows((prev) => prev.filter((_, i) => i !== idx));
 
-  const reset = () => { setVanId(''); setWarehouseId(''); setRows([]); };
+  const reset = () => { setVanId(''); setWarehouseId(''); setRows([]); setFifoProductId(''); setFifoQuantity(1); };
 
   const submit = async () => {
     if (!vanId || !warehouseId) { push('error', 'Select a van and a source warehouse.'); return; }
@@ -74,8 +100,26 @@ function NewLoadingModal({ open, onClose, onCreated }: { open: boolean; onClose:
         </div>
 
         {warehouseId && (
+          <div className="rounded-lg border border-brand-200 bg-brand-50 p-3 dark:border-brand-900 dark:bg-brand-900/20">
+            <label className="label flex items-center gap-1.5"><Zap size={14} className="text-brand-600" /> Auto-add by quantity (FIFO — oldest expiry first)</label>
+            <div className="flex gap-2">
+              <select className="input" value={fifoProductId} onChange={(e) => setFifoProductId(e.target.value)}>
+                <option value="">Select a product…</option>
+                {uniqueProducts.map(({ id, product }) => <option key={id} value={id}>{product?.name}</option>)}
+              </select>
+              <input type="number" min={1} step="0.001" className="input !w-28" value={fifoQuantity}
+                onChange={(e) => setFifoQuantity(Number(e.target.value))} />
+              <button type="button" className="btn-primary shrink-0" onClick={addRowsFromFifo} disabled={allocating}>
+                {allocating ? 'Allocating…' : 'Add'}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">Automatically splits across batches oldest-expiry-first if one batch doesn't cover the full quantity.</p>
+          </div>
+        )}
+
+        {warehouseId && (
           <div>
-            <label className="label">Add product from warehouse stock</label>
+            <label className="label">Or pick an exact batch manually</label>
             <select className="input" value="" onChange={(e) => e.target.value && addRow(e.target.value)}>
               <option value="">Select a product…</option>
               {stock.map((s) => (
