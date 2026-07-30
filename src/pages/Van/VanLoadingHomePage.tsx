@@ -5,6 +5,7 @@ const TABS = [
   { to: '/van-loading', label: 'Loading Sheets', end: true },
   { to: '/van-loading/daily-operations', label: 'Daily Operations', end: false },
   { to: '/van-loading/vans', label: 'Vans', end: false },
+  { to: '/van-loading/van-transfers', label: 'Van Transfers', end: false },
   { to: '/van-loading/staff-report', label: 'Staff Report', end: false },
   { to: '/van-loading/fuel', label: 'Fuel', end: false },
   { to: '/van-loading/maintenance', label: 'Maintenance', end: false },

@@ -8,7 +8,11 @@ export interface VanUnloading {
   unloading_no: string;
   van_id: string;
   warehouse_id: string;
-  status: 'draft' | 'pending_approval' | 'approved' | 'rejected';
+  status: 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'reopened' | 'cancelled';
+  signature_url: string | null;
+  approval_notes: string | null;
+  rejected_reason: string | null;
+  cancel_reason: string | null;
   created_by: string | null;
   approved_by: string | null;
   approved_at: string | null;
@@ -25,6 +29,29 @@ export interface VanUnloadingItemDraft {
   item_type: UnloadingItemType;
   quantity: number;
   system_quantity: number;
+  variance_reason?: string;
+}
+
+export interface VanUnloadingItemRow {
+  id: string;
+  unloading_id: string;
+  product_id: string;
+  batch_id: string | null;
+  item_type: UnloadingItemType;
+  quantity: number;
+  system_quantity: number | null;
+  difference: number | null;
+  variance_reason: string | null;
+  product?: { id: string; name: string; sku: string } | null;
+  batch?: { id: string; batch_no: string } | null;
+}
+
+export async function fetchUnloadingItems(unloadingId: string): Promise<VanUnloadingItemRow[]> {
+  const { data } = await supabase
+    .from('van_unloading_items')
+    .select('*, product:products(id,name,sku), batch:batches(id,batch_no)')
+    .eq('unloading_id', unloadingId);
+  return (data ?? []) as unknown as VanUnloadingItemRow[];
 }
 
 function genDocNo(prefix: string) {
@@ -74,6 +101,7 @@ export function useVanUnloadings() {
       nonZero.map((it) => ({
         unloading_id: sheet.id, product_id: it.product_id, batch_id: it.batch_id,
         item_type: it.item_type, quantity: it.quantity, system_quantity: it.system_quantity,
+        variance_reason: it.variance_reason || null,
       }))
     );
     if (itemsErr) return { error: itemsErr.message };
@@ -82,16 +110,43 @@ export function useVanUnloadings() {
     return { error: null, id: sheet.id as string };
   }, [company, user, load]);
 
-  const approveUnloading = useCallback(async (unloadingId: string) => {
+  const submitUnloading = useCallback(async (id: string, notes?: string) => {
+    const { error } = await supabase.rpc('submit_van_unloading', { p_unloading_id: id, p_notes: notes ?? null });
+    if (!error) await load();
+    return { error: error?.message ?? null };
+  }, [load]);
+
+  const rejectUnloading = useCallback(async (id: string, reason: string) => {
+    const { error } = await supabase.rpc('reject_van_unloading', { p_unloading_id: id, p_reason: reason });
+    if (!error) await load();
+    return { error: error?.message ?? null };
+  }, [load]);
+
+  const reopenUnloading = useCallback(async (id: string, notes?: string) => {
+    const { error } = await supabase.rpc('reopen_van_unloading', { p_unloading_id: id, p_notes: notes ?? null });
+    if (!error) await load();
+    return { error: error?.message ?? null };
+  }, [load]);
+
+  const cancelUnloading = useCallback(async (id: string, reason: string) => {
+    const { error } = await supabase.rpc('cancel_van_unloading', { p_unloading_id: id, p_reason: reason });
+    if (!error) await load();
+    return { error: error?.message ?? null };
+  }, [load]);
+
+  const approveUnloading = useCallback(async (unloadingId: string, notes?: string, signatureUrl?: string) => {
     if (!user) return { error: 'No user context' };
     const { error } = await supabase.rpc('approve_van_unloading', {
-      p_unloading_id: unloadingId, p_approver_id: user.id,
+      p_unloading_id: unloadingId, p_approver_id: user.id, p_notes: notes ?? null, p_signature_url: signatureUrl ?? null,
     });
     if (!error) await load();
     return { error: error?.message ?? null };
   }, [user, load]);
 
-  return { unloadings, loading, reload: load, createUnloading, approveUnloading };
+  return {
+    unloadings, loading, reload: load, createUnloading, approveUnloading,
+    submitUnloading, rejectUnloading, reopenUnloading, cancelUnloading,
+  };
 }
 
 /** Current van stock, used to prefill both loading verification and unloading defaults. */

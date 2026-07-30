@@ -45,6 +45,7 @@ const GpsHistoryPage = lazy(() => import('@/pages/Gps/GpsHistoryPage').then((m) 
 import { FuelManagementPage } from '@/pages/Van/FuelManagementPage';
 import { MaintenancePage } from '@/pages/Van/MaintenancePage';
 import { DailyVanOperationsPage } from '@/pages/Van/DailyVanOperationsPage';
+import { VanTransferPage } from '@/pages/Van/VanTransferPage';
 import { GeofencesPage } from '@/pages/Gps/GeofencesPage';
 import { VehicleAlertsPage } from '@/pages/Gps/VehicleAlertsPage';
 import { StaffPage } from '@/pages/HR/StaffPage';
@@ -119,6 +120,7 @@ export default function App() {
               <Route path="fuel" element={<FuelManagementPage />} />
               <Route path="maintenance" element={<MaintenancePage />} />
               <Route path="daily-operations" element={<DailyVanOperationsPage />} />
+              <Route path="van-transfers" element={<VanTransferPage />} />
             </Route>
             <Route path="van-loading/vans/:vanId" element={<VanDetailPage />} />
             <Route path="van-unloading" element={<VanUnloadingPage />} />

@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0031). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0032). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,62 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 3B.2: Loading/Unloading Approval Workflow, Van-to-Van Transfers
+
+Extends the existing Van Loading/Unloading modules (Phase 1) rather than
+rebuilding them — several fields the schema already had (`signature_url`,
+`quantity_verified`, `system_quantity`/`difference`) were sitting unused
+until now.
+
+- **Full status lifecycle** for both: `draft → pending_approval →
+  approved / rejected → reopened → cancelled`, each transition logged to
+  a shared `approval_history` table (who, when, what note, what
+  signature) — click any loading/unloading number in the list to see
+  the full timeline.
+- **Picking verification** — the `quantity_verified` column already
+  drove the actual stock movement on approval; this phase adds who
+  picked it and when (`picked_by`/`picked_at`), exposed as an editable
+  "Picked qty" column right in the loading detail view.
+- **Unload variance** — `system_quantity`/`difference` (generated
+  column) already existed; approval now captures the expected van
+  quantity automatically if the creator didn't supply it, and a
+  variance reason is required on the entry form whenever physical
+  quantity differs from system quantity.
+- **Digital signature** at approval for both loading and unloading
+  (the same canvas signature pad built in 3B.1), notes, reject with a
+  required reason, reopen back to draft, cancel with a required reason.
+- **Van-to-Van Transfers** (Van Loading → Van Transfers) — a genuinely
+  new capability. The existing `warehouse_transfers` table structurally
+  can't express this direction (it only has `from_warehouse_id`/
+  `to_warehouse_id`); this adds a parallel `van_transfers` table with
+  its own approval + a "mark received" step, including an emergency-
+  transfer flag for out-of-cycle moves (e.g. a van running out mid-route).
+  `warehouse_transfers` also gained the same `received_by`/`received_at`
+  tracking this doc asked for.
+- **Serial number selection at loading** — `van_loading_item_serials`
+  links specific serialized units to a loading line; approval relocates
+  those exact serials to the van (`product_serials.current_location`).
+- **Duplicate-line prevention** — enforced at the database level (a
+  unique index on loading/unloading line items), not just a client-side
+  nicety; the New Loading modal also now merges a re-added product+batch
+  into its existing row instead of creating a second one.
+- **Document generation** — Loading Sheet, Picking List, and Unload
+  Verification are all one shared printable-document template
+  (`printDocument()`) with different titles/columns rather than three
+  separate systems, opened via the browser's print dialog (works with
+  any printer, no paid API needed). Barcode/QR labels for products or
+  batches already existed from an earlier phase (Inventory → Label
+  Printing) — not rebuilt here.
+
+**Real gap, stated plainly:** FIFO batch validation and negative-stock
+validation both already existed structurally (the FIFO allocation engine
+from Phase 2, and `approve_van_loading`'s stock-availability check from
+Phase 1) — this phase didn't need to add new enforcement for those, only
+wire the newly-added fields around them. What's *not* built: a
+formal multi-level approval chain (e.g. Supervisor → Manager → Accounts)
+— today it's a single approve/reject step per document, same as every
+other approval workflow in this app.
 
 ## Phase 3B.1: Daily Van Operations, Stock Reconciliation
 
