@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0030). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0031). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,63 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 3B.1: Daily Van Operations, Stock Reconciliation
+
+Built against your enterprise requirements doc. This deliberately does
+**not** duplicate Van Loading/Unloading — those remain how stock
+physically moves in and out of a van (opening stock transfer and
+closing stock return already existed). What's genuinely new here:
+
+- **Daily Van Operations** (Van Loading → Daily Operations) — a
+  first-class per-van-per-day shift record with a real status
+  lifecycle: **Start → Pause ⇄ Resume → End**, or **Cancel** with a
+  required reason at any point. Auto-dated, assigned van/route,
+  opening/closing time stamped automatically, opening/closing
+  odometer and cash entered by the driver, and opening/closing **stock
+  value** computed automatically from live `van_stock × cost_price` at
+  the moment each transition happens — not entered manually. A
+  vanilla-canvas **signature pad** (no external dependency) captures a
+  digital signature at both open and close.
+- **Stock Reconciliation** (inside an in-progress/paused operation) —
+  physical count entered against every product currently on the van,
+  live variance shown per line (system vs. counted), optional reason,
+  submitted as pending reconciliation records. **Approval actually
+  applies the adjustment** — `approve_stock_reconciliation()` updates
+  `van_stock` to match the physical count and logs a real
+  `stock_movements` row (`reconciliation_adjustment`), atomically, so
+  nothing is just a report — approving genuinely changes what the
+  system thinks is on the van.
+- **Daily Van Summary** report — the operations list itself (opening/
+  closing cash/odometer/stock value, duration, status), filterable and
+  exportable like every other table in the app.
+
+**What this deliberately reuses rather than rebuilding**, since
+building it twice would be the "duplicate module" problem the doc
+explicitly warned against:
+- Opening Stock Transfer, barcode/QR scan, batch/expiry selection, and
+  approval workflow → **Van Loading** (already built, Phase 1).
+- Closing Stock (remaining/damaged/expired/returned) → **Van
+  Unloading** (already built, Phase 1).
+- Every stock movement already generates a `stock_movements` log row
+  automatically (loading, unloading, sales, adjustments, transfers,
+  receiving) — this phase adds the two new types this doc specifically
+  called for (`reconciliation_adjustment`, and `closing_stock` as an
+  available type for future use) rather than re-logging what already
+  logs itself.
+
+**Real gaps, stated rather than glossed over:**
+- The physical-count table doesn't have a barcode/QR scan button wired
+  in yet — counting is by typing a quantity next to each listed
+  product. The camera scanner component already exists (built for POS)
+  and wiring it in here is a small, contained follow-up, not a new
+  capability to design.
+- "Reserved stock" isn't tracked as a distinct state anywhere in this
+  schema — `van_stock.quantity` is the only number that exists; there's
+  no concept of stock being held/reserved separately from available.
+- Serial-level breakdown at the daily-operation level isn't built —
+  `product_serials` (from an earlier phase) tracks serials globally,
+  not scoped into a specific day's shift.
 
 ## Phase 3A.3: GPS enhancements, Geofencing, Fuel, Maintenance
 
