@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0029). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0030). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,57 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 3A.3: GPS enhancements, Geofencing, Fuel, Maintenance
+
+Built against your enterprise requirements doc:
+
+- **GPS Tracking enhancements** (GPS → History & Playback) — real trip
+  stats per van per day (distance, travel time, stop time, GPS point
+  count) computed from `gps_logs` via haversine, plus **actual route
+  playback**: a real interactive map (Leaflet + OpenStreetMap tiles —
+  deliberately not Google Maps, since that needs a paid API key this
+  project doesn't have) with a scrubber that moves a marker along the
+  recorded path. Live Tracking (online/offline, last sync time) was
+  already built in an earlier phase.
+- **Geofencing** (GPS → Geofences) — Warehouse/Customer/Route/Custom
+  zones (manual lat/lng + radius entry, or "use my current location").
+  Arrival/exit detection is a **real Postgres trigger** that fires on
+  every GPS ping (`detect_geofence_events`), not a client-side
+  approximation — it works no matter which device or page sent the
+  position. Sustained unauthorized movement (outside every fence for
+  30+ minutes) raises a Vehicle Alert automatically.
+- **Fuel Management** (Van Loading → Fuel) — entries with type/quantity/
+  cost/odometer, and computed mileage (km per liter) from odometer
+  deltas between fuel entries — the reliable source, since GPS-derived
+  distance has gaps whenever location sharing wasn't on.
+- **Vehicle Maintenance** (Van Loading → Maintenance) — service records
+  with an approve/reject workflow and invoice links, plus recurring
+  schedules (by km interval, day interval, or both) that drive the
+  "maintenance due" alert.
+- **Reminders / Notifications → Vehicle Alerts** (GPS → Alerts, also
+  surfaced on the Dashboard) — maintenance due, insurance/registration/
+  permit/driver-license expiry, and vehicle-offline detection, all
+  computed by one RPC and acknowledgeable. **Important limitation,
+  stated plainly rather than glossed over:** this is a static PWA + Supabase
+  with no background server, so there is no real cron — alerts are
+  recomputed each time the Dashboard or Alerts page loads, not pushed
+  in real time the moment something becomes due. If you need true
+  push notifications independent of anyone opening the app, that needs
+  a Supabase Edge Function on a schedule (or an external cron hitting
+  an endpoint) — genuine new infrastructure, not something addressable
+  from the client alone.
+- **Reports** — Fuel, Maintenance, GPS Trip Stats, and Vehicle Alerts
+  each export from their own page (CSV/Excel, like every table in the
+  app) rather than as separate dedicated report pages, since each one
+  already *is* the underlying data in filterable, exportable form.
+
+Three real bugs were caught and fixed in the migration for this phase
+before it was ever run against the database — a broken composite
+primary key, a wrong column name (`gps_logs.recorded_at`, not
+`created_at`) that would have silently broken the geofence trigger and
+trip-stats function, and a duplicate-alert bug for driver-linked
+alerts. All three are detailed in the migration file's commit history.
 
 ## Phase 3A.2: Driver / Salesman / Route Management
 

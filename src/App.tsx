@@ -44,6 +44,8 @@ import { GpsHomePage } from '@/pages/Gps/GpsHomePage';
 const GpsHistoryPage = lazy(() => import('@/pages/Gps/GpsHistoryPage').then((m) => ({ default: m.GpsHistoryPage })));
 import { FuelManagementPage } from '@/pages/Van/FuelManagementPage';
 import { MaintenancePage } from '@/pages/Van/MaintenancePage';
+import { GeofencesPage } from '@/pages/Gps/GeofencesPage';
+import { VehicleAlertsPage } from '@/pages/Gps/VehicleAlertsPage';
 import { StaffPage } from '@/pages/HR/StaffPage';
 import { HRHomePage } from '@/pages/HR/HRHomePage';
 import { DriverManagementPage } from '@/pages/HR/DriverManagementPage';
@@ -157,6 +159,8 @@ export default function App() {
                   <GpsHistoryPage />
                 </Suspense>
               } />
+              <Route path="geofences" element={<GeofencesPage />} />
+              <Route path="alerts" element={<VehicleAlertsPage />} />
             </Route>
             <Route path="settings" element={<SettingsHomePage />}>
               <Route index element={<CompanySettingsPage />} />

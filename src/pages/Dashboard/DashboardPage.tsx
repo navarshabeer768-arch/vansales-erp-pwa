@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   DollarSign, Calendar, CalendarRange, Wallet, HandCoins, AlertTriangle,
@@ -7,6 +8,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useReports } from '@/hooks/useReports';
+import { useVehicleAlerts } from '@/hooks/useVehicleAlerts';
 
 function monthStartIso() {
   const d = new Date();
@@ -41,6 +43,11 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 export function DashboardPage() {
   const { company, user } = useAuth();
   const { stats, loading } = useDashboardStats();
+  const { unacknowledgedCount: alertCount, refresh: refreshAlerts } = useVehicleAlerts();
+
+  // Recompute vehicle alerts (maintenance due, expiry, offline vans) whenever
+  // the Dashboard loads — there's no background server here to run a cron.
+  useEffect(() => { refreshAlerts(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const { topProducts, topCustomers, salesmen, vans } = useReports(monthStartIso(), todayIso());
 
   const currency = company?.currency ?? '';
@@ -95,6 +102,7 @@ export function DashboardPage() {
       <div>
         <SectionTitle>Pending Approvals {totalPending > 0 && <span className="ml-1 text-red-600">({totalPending})</span>}</SectionTitle>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard icon={AlertTriangle} label="Vehicle alerts" value={alertCount} accent={alertCount > 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'} href="/gps/alerts" />
           <KpiCard icon={ClipboardCheck} label="Van loadings" value={loading ? '—' : s?.pending_van_loadings ?? 0} accent="bg-amber-100 text-amber-700" href="/van-loading" />
           <KpiCard icon={ClipboardCheck} label="Van unloadings" value={loading ? '—' : s?.pending_van_unloadings ?? 0} accent="bg-amber-100 text-amber-700" href="/van-unloading" />
           <KpiCard icon={ClipboardCheck} label="Stock adjustments" value={loading ? '—' : s?.pending_stock_adjustments ?? 0} accent="bg-amber-100 text-amber-700" href="/warehouse" />

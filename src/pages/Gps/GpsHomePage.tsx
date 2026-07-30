@@ -4,6 +4,8 @@ import clsx from 'clsx';
 const TABS = [
   { to: '/gps', label: 'Live Tracking', end: true },
   { to: '/gps/history', label: 'History & Playback', end: false },
+  { to: '/gps/geofences', label: 'Geofences', end: false },
+  { to: '/gps/alerts', label: 'Alerts', end: false },
 ];
 
 export function GpsHomePage() {
