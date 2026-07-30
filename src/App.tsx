@@ -40,6 +40,10 @@ import { CollectionsPage } from '@/pages/Collections/CollectionsPage';
 import { ReturnsPage } from '@/pages/Returns/ReturnsPage';
 import { PaymentsPage } from '@/pages/Payments/PaymentsPage';
 import { GpsTrackingPage } from '@/pages/Gps/GpsTrackingPage';
+import { GpsHomePage } from '@/pages/Gps/GpsHomePage';
+const GpsHistoryPage = lazy(() => import('@/pages/Gps/GpsHistoryPage').then((m) => ({ default: m.GpsHistoryPage })));
+import { FuelManagementPage } from '@/pages/Van/FuelManagementPage';
+import { MaintenancePage } from '@/pages/Van/MaintenancePage';
 import { StaffPage } from '@/pages/HR/StaffPage';
 import { HRHomePage } from '@/pages/HR/HRHomePage';
 import { DriverManagementPage } from '@/pages/HR/DriverManagementPage';
@@ -109,6 +113,8 @@ export default function App() {
               <Route index element={<VanLoadingPage />} />
               <Route path="vans" element={<VansPage />} />
               <Route path="staff-report" element={<VanStaffReportPage />} />
+              <Route path="fuel" element={<FuelManagementPage />} />
+              <Route path="maintenance" element={<MaintenancePage />} />
             </Route>
             <Route path="van-loading/vans/:vanId" element={<VanDetailPage />} />
             <Route path="van-unloading" element={<VanUnloadingPage />} />
@@ -144,7 +150,14 @@ export default function App() {
               <Route path="drivers" element={<DriverManagementPage />} />
               <Route path="salesmen" element={<SalesmanManagementPage />} />
             </Route>
-            <Route path="gps" element={<GpsTrackingPage />} />
+            <Route path="gps" element={<GpsHomePage />}>
+              <Route index element={<GpsTrackingPage />} />
+              <Route path="history" element={
+                <Suspense fallback={<LoadingScreen label="Loading map…" />}>
+                  <GpsHistoryPage />
+                </Suspense>
+              } />
+            </Route>
             <Route path="settings" element={<SettingsHomePage />}>
               <Route index element={<CompanySettingsPage />} />
               <Route path="security" element={<SecuritySettingsPage />} />

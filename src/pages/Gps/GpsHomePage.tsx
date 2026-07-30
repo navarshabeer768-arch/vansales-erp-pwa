@@ -2,20 +2,17 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 
 const TABS = [
-  { to: '/van-loading', label: 'Loading Sheets', end: true },
-  { to: '/van-loading/vans', label: 'Vans', end: false },
-  { to: '/van-loading/staff-report', label: 'Staff Report', end: false },
-  { to: '/van-loading/fuel', label: 'Fuel', end: false },
-  { to: '/van-loading/maintenance', label: 'Maintenance', end: false },
+  { to: '/gps', label: 'Live Tracking', end: true },
+  { to: '/gps/history', label: 'History & Playback', end: false },
 ];
 
-export function VanLoadingHomePage() {
+export function GpsHomePage() {
   const location = useLocation();
   return (
     <div className="space-y-4">
       <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
         {TABS.map((t) => {
-          const active = t.end ? location.pathname === t.to : location.pathname.startsWith(t.to) && t.to !== '/van-loading';
+          const active = t.end ? location.pathname === t.to : location.pathname.startsWith(t.to) && t.to !== '/gps';
           return (
             <Link
               key={t.to}
