@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
-import { HandCoins } from 'lucide-react';
+import { HandCoins, Printer } from 'lucide-react';
 import {
-  useOutstandingCustomers, useCollections, fetchOpenSalesForCustomer,
+  useOutstandingCustomers, useCollections, fetchOpenSalesForCustomer, fetchCustomerStatement,
   CustomerWithBalance, OpenSale, Collection,
 } from '@/hooks/useCollections';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePrintSettings, logPrint } from '@/hooks/usePrintSettings';
+import { printDocument } from '@/lib/documentPrint';
 
 const METHODS: Collection['method'][] = ['cash', 'card', 'bank', 'cheque', 'pdc'];
 
@@ -112,8 +115,46 @@ export function CollectionsPage() {
   const { customers, loading, reload: reloadOutstanding } = useOutstandingCustomers();
   const { collections, loading: loadingHistory, reload: reloadHistory } = useCollections();
   const [collecting, setCollecting] = useState<CustomerWithBalance | null>(null);
+  const { company, user } = useAuth();
+  const { settings } = usePrintSettings();
+  const { push } = useToast();
 
   const refreshAll = () => { reloadOutstanding(); reloadHistory(); };
+
+  const printReceipt = async (c: Collection) => {
+    printDocument({
+      title: 'Collection Receipt', subtitle: c.receipt_no,
+      meta: [
+        { label: 'Customer', value: c.customer?.business_name ?? '—' }, { label: 'Method', value: c.method },
+        { label: 'Date', value: new Date(c.created_at).toLocaleString() }, { label: 'Store', value: company?.name ?? '—' },
+      ],
+      columns: [{ header: 'Description' }, { header: 'Amount', align: 'right' }],
+      rows: [[`Payment received — ${c.method}${c.reference_no ? ` (Ref: ${c.reference_no})` : ''}`, c.amount.toFixed(2)]],
+      settings,
+    });
+    if (company) await logPrint(company.id, user?.id ?? null, 'collection_receipt', c.id, settings.paper_size === 'a4' ? 'browser_a4' : `browser_${settings.paper_size}`, settings.copies);
+    push('success', 'Receipt sent to print.');
+  };
+
+  const printStatement = async (customer: CustomerWithBalance) => {
+    const lines = await fetchCustomerStatement(customer.id);
+    let running = 0;
+    printDocument({
+      title: 'Customer Statement', subtitle: customer.business_name,
+      meta: [
+        { label: 'Customer code', value: customer.customer_code }, { label: 'Outstanding balance', value: customer.outstanding_balance.toFixed(2) },
+        { label: 'Store', value: company?.name ?? '—' },
+      ],
+      columns: [{ header: 'Date' }, { header: 'Reference' }, { header: 'Debit', align: 'right' }, { header: 'Credit', align: 'right' }, { header: 'Balance', align: 'right' }],
+      rows: lines.map((l) => {
+        running += l.debit - l.credit;
+        return [new Date(l.date).toLocaleDateString(), l.reference, l.debit ? l.debit.toFixed(2) : '', l.credit ? l.credit.toFixed(2) : '', running.toFixed(2)];
+      }),
+      settings: { ...settings, paper_size: 'a4' },
+    });
+    if (company) await logPrint(company.id, user?.id ?? null, 'customer_statement', customer.id, 'browser_a4', settings.copies);
+    push('success', 'Statement sent to print.');
+  };
 
   const outstandingColumns: Column<CustomerWithBalance>[] = [
     { key: 'name', header: 'Customer', sortValue: (r) => r.business_name, render: (r) => (
@@ -126,9 +167,12 @@ export function CollectionsPage() {
     {
       key: 'actions', header: '', className: 'text-right',
       render: (r) => (
-        <PermissionGate permission="collections:create">
-          <button className="btn-primary !py-1" onClick={() => setCollecting(r)}>Collect</button>
-        </PermissionGate>
+        <div className="flex justify-end gap-1">
+          <button className="btn-secondary !py-1" onClick={() => printStatement(r)}><Printer size={14} /> Statement</button>
+          <PermissionGate permission="collections:create">
+            <button className="btn-primary !py-1" onClick={() => setCollecting(r)}>Collect</button>
+          </PermissionGate>
+        </div>
       ),
     },
   ];
@@ -139,6 +183,10 @@ export function CollectionsPage() {
     { key: 'method', header: 'Method', render: (r) => <span className="capitalize">{r.method}</span> },
     { key: 'amount', header: 'Amount', render: (r) => r.amount.toFixed(2) },
     { key: 'created_at', header: 'Date', render: (r) => new Date(r.created_at).toLocaleString() },
+    {
+      key: 'actions', header: '', className: 'text-right',
+      render: (r) => <button className="btn-ghost !px-2 !py-1" onClick={() => printReceipt(r)}><Printer size={14} /></button>,
+    },
   ];
 
   return (

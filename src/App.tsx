@@ -48,6 +48,7 @@ import { MaintenancePage } from '@/pages/Van/MaintenancePage';
 import { DailyVanOperationsPage } from '@/pages/Van/DailyVanOperationsPage';
 import { VanTransferPage } from '@/pages/Van/VanTransferPage';
 import { DeviceManagementPage } from '@/pages/Settings/DeviceManagementPage';
+import { PrintSettingsPage } from '@/pages/Settings/PrintSettingsPage';
 import { GeofencesPage } from '@/pages/Gps/GeofencesPage';
 import { VehicleAlertsPage } from '@/pages/Gps/VehicleAlertsPage';
 import { StaffPage } from '@/pages/HR/StaffPage';
@@ -175,6 +176,7 @@ export default function App() {
               <Route path="roles" element={<RolesPermissionsPage />} />
               <Route path="login-history" element={<LoginHistoryPage />} />
               <Route path="devices" element={<DeviceManagementPage />} />
+              <Route path="print" element={<PrintSettingsPage />} />
             </Route>
             </Route>
           </Route>

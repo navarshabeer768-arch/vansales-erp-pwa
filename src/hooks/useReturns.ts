@@ -32,6 +32,13 @@ function genReturnNo() {
   return `RTN-${ym}-${Math.floor(Math.random() * 900000 + 100000)}`;
 }
 
+export interface ReturnItemRow { product_id: string; quantity: number; unit_price: number; product?: { name: string } | null; }
+
+export async function fetchReturnItems(returnId: string): Promise<ReturnItemRow[]> {
+  const { data } = await supabase.from('return_items').select('product_id, quantity, unit_price, product:products(name)').eq('return_id', returnId);
+  return (data ?? []) as unknown as ReturnItemRow[];
+}
+
 export function useReturns() {
   const { company, user } = useAuth();
   const [returns, setReturns] = useState<ReturnRow[]>([]);

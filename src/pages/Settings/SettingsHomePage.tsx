@@ -12,6 +12,7 @@ export function SettingsHomePage() {
     { to: '/settings/roles', label: 'Roles & Permissions', end: false, show: can('settings:edit') },
     { to: '/settings/login-history', label: 'Login History', end: false, show: can('hr:edit') },
     { to: '/settings/devices', label: 'Devices', end: false, show: can('devices:manage') },
+    { to: '/settings/print', label: 'Print Settings', end: false, show: can('settings:edit') },
   ].filter((t) => t.show);
 
   return (

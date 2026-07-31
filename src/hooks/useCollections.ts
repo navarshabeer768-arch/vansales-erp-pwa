@@ -30,6 +30,20 @@ function genReceiptNo() {
   return `RCT-${ym}-${Math.floor(Math.random() * 900000 + 100000)}`;
 }
 
+export interface StatementLine { date: string; type: 'invoice' | 'payment'; reference: string; debit: number; credit: number; }
+
+export async function fetchCustomerStatement(customerId: string): Promise<StatementLine[]> {
+  const [{ data: sales }, { data: payments }] = await Promise.all([
+    supabase.from('sales').select('created_at, invoice_no, total_amount').eq('customer_id', customerId).order('created_at', { ascending: true }),
+    supabase.from('collections').select('created_at, receipt_no, amount').eq('customer_id', customerId).order('created_at', { ascending: true }),
+  ]);
+  const lines: StatementLine[] = [
+    ...((sales ?? []) as any[]).map((s) => ({ date: s.created_at, type: 'invoice' as const, reference: s.invoice_no, debit: s.total_amount, credit: 0 })),
+    ...((payments ?? []) as any[]).map((p) => ({ date: p.created_at, type: 'payment' as const, reference: p.receipt_no, debit: 0, credit: p.amount })),
+  ];
+  return lines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
 export function useOutstandingCustomers() {
   const { company } = useAuth();
   const [customers, setCustomers] = useState<CustomerWithBalance[]>([]);

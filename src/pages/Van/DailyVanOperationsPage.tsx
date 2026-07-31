@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { Play, Pause, Square, Ban, ClipboardList, ScanLine } from 'lucide-react';
+import { Play, Pause, Square, Ban, ClipboardList, ScanLine, Printer } from 'lucide-react';
 import { useVans } from '@/hooks/useVans';
 import { useMyVanIds } from '@/hooks/useVanAssignments';
 import { useRoutes } from '@/hooks/useRoutes';
 import { useDailyVanOperations, DailyVanOperation, todayIso } from '@/hooks/useDailyVanOperations';
 import { useVanStock } from '@/hooks/useVanUnloadings';
 import { useStockReconciliation, ReconciliationItemDraft } from '@/hooks/useStockReconciliation';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePrintSettings, logPrint } from '@/hooks/usePrintSettings';
+import { printDocument } from '@/lib/documentPrint';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { Modal } from '@/components/ui/Modal';
 import { SignaturePad } from '@/components/common/SignaturePad';
@@ -138,9 +141,23 @@ function ReconciliationSection({ operation }: { operation: DailyVanOperation }) 
   const { stock } = useVanStock(operation.van_id);
   const { rows, submit, approve } = useStockReconciliation(operation.id);
   const { push } = useToast();
+  const { company, user } = useAuth();
+  const { settings } = usePrintSettings();
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const printStockCountReport = async () => {
+    printDocument({
+      title: 'Stock Count Report', subtitle: operation.van?.name ?? '',
+      meta: [{ label: 'Date', value: operation.operation_date }, { label: 'Store', value: company?.name ?? '—' }],
+      columns: [{ header: 'Product' }, { header: 'System Qty', align: 'right' }, { header: 'Physical Qty', align: 'right' }, { header: 'Difference', align: 'right' }, { header: 'Status' }],
+      rows: rows.map((r) => [r.product?.name ?? '—', r.system_quantity, r.physical_quantity, r.difference_quantity, r.status]),
+      settings: { ...settings, paper_size: 'a4' },
+    });
+    if (company) await logPrint(company.id, user?.id ?? null, 'stock_count_report', operation.id, 'browser_a4', settings.copies);
+    push('success', 'Stock count report sent to print.');
+  };
 
   const handleSubmit = async () => {
     const items: ReconciliationItemDraft[] = stock
@@ -204,7 +221,10 @@ function ReconciliationSection({ operation }: { operation: DailyVanOperation }) 
 
       {rows.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Reconciliation records</h3>
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Reconciliation records</h3>
+            <button className="btn-secondary !py-1" onClick={printStockCountReport}><Printer size={14} /> Stock Count Report</button>
+          </div>
           <div className="card overflow-hidden">
             <table className="table-base">
               <thead><tr><th>Product</th><th>System</th><th>Physical</th><th>Difference</th><th>Value</th><th>Status</th><th></th></tr></thead>
@@ -249,8 +269,31 @@ export function DailyVanOperationsPage() {
   const [cancellingOp, setCancellingOp] = useState<DailyVanOperation | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const { company, user } = useAuth();
+  const { settings } = usePrintSettings();
 
   const todaysOp = operations.find((o) => o.van_id === vanId && o.operation_date === todayIso());
+
+  const printDailySummary = async () => {
+    if (!todaysOp) return;
+    printDocument({
+      title: 'Daily Van Summary', subtitle: todaysOp.van?.name ?? '',
+      meta: [
+        { label: 'Date', value: todaysOp.operation_date }, { label: 'Status', value: todaysOp.status },
+        { label: 'Route', value: todaysOp.route?.name ?? '—' }, { label: 'Store', value: company?.name ?? '—' },
+      ],
+      columns: [{ header: 'Metric' }, { header: 'Opening', align: 'right' }, { header: 'Closing', align: 'right' }],
+      rows: [
+        ['Time', todaysOp.opening_time ? new Date(todaysOp.opening_time).toLocaleTimeString() : '—', todaysOp.closing_time ? new Date(todaysOp.closing_time).toLocaleTimeString() : '—'],
+        ['Odometer (km)', todaysOp.opening_odometer ?? '—', todaysOp.closing_odometer ?? '—'],
+        ['Cash', todaysOp.opening_cash.toFixed(2), todaysOp.closing_cash?.toFixed(2) ?? '—'],
+        ['Stock value', todaysOp.opening_stock_value?.toFixed(2) ?? '—', todaysOp.closing_stock_value?.toFixed(2) ?? '—'],
+      ],
+      settings: { ...settings, paper_size: 'a4' },
+    });
+    if (company) await logPrint(company.id, user?.id ?? null, 'daily_summary', todaysOp.id, 'browser_a4', settings.copies);
+    push('success', 'Daily summary sent to print.');
+  };
 
   const handlePause = async () => {
     if (!todaysOp) return;
@@ -324,6 +367,7 @@ export function DailyVanOperationsPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  <button className="btn-secondary" onClick={printDailySummary}><Printer size={16} /> Daily Summary</button>
                   <PermissionGate permission="van_loading:edit">
                     {todaysOp.status === 'in_progress' && (
                       <button className="btn-secondary" onClick={handlePause}><Pause size={16} /> Pause</button>

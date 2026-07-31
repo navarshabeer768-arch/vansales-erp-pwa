@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Plus, Check, Trash2, Undo2 } from 'lucide-react';
-import { useReturns, ReturnItemDraft, ReturnType, ReturnRow } from '@/hooks/useReturns';
+import { Plus, Check, Trash2, Undo2, Printer } from 'lucide-react';
+import { useReturns, fetchReturnItems, ReturnItemDraft, ReturnType, ReturnRow } from '@/hooks/useReturns';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useSuppliers } from '@/hooks/useCatalog';
 import { useWarehouses } from '@/hooks/useWarehouses';
@@ -11,6 +11,9 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePrintSettings, logPrint } from '@/hooks/usePrintSettings';
+import { printDocument } from '@/lib/documentPrint';
 
 function NewReturnModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const { createReturn } = useReturns();
@@ -161,6 +164,8 @@ export function ReturnsPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [toApprove, setToApprove] = useState<ReturnRow | null>(null);
   const [busy, setBusy] = useState(false);
+  const { company, user } = useAuth();
+  const { settings } = usePrintSettings();
 
   const handleApprove = async () => {
     if (!toApprove) return;
@@ -169,6 +174,23 @@ export function ReturnsPage() {
     setBusy(false);
     setToApprove(null);
     push(error ? 'error' : 'success', error ?? 'Return approved — stock and balances updated.');
+  };
+
+  const printReceipt = async (r: ReturnRow) => {
+    const items = await fetchReturnItems(r.id);
+    printDocument({
+      title: 'Return Receipt', subtitle: r.return_no,
+      meta: [
+        { label: 'Type', value: r.return_type.replace('_', ' ') }, { label: 'Party', value: r.customer?.business_name ?? r.supplier?.name ?? '—' },
+        { label: 'Date', value: new Date(r.created_at).toLocaleString() }, { label: 'Store', value: company?.name ?? '—' },
+      ],
+      columns: [{ header: 'Product' }, { header: 'Qty', align: 'right' }, { header: 'Unit Price', align: 'right' }, { header: 'Total', align: 'right' }],
+      rows: items.map((it) => [it.product?.name ?? '—', it.quantity, it.unit_price.toFixed(2), (it.quantity * it.unit_price).toFixed(2)]),
+      footerNote: `Total: ${r.total_amount.toFixed(2)}`,
+      settings,
+    });
+    if (company) await logPrint(company.id, user?.id ?? null, 'return_receipt', r.id, settings.paper_size === 'a4' ? 'browser_a4' : `browser_${settings.paper_size}`, settings.copies);
+    push('success', 'Receipt sent to print.');
   };
 
   const columns: Column<ReturnRow>[] = [
@@ -183,9 +205,12 @@ export function ReturnsPage() {
     {
       key: 'actions', header: '', className: 'text-right',
       render: (r) => (
-        <PermissionGate permission="returns:approve">
-          {r.status === 'pending' && <button className="btn-secondary !py-1" onClick={() => setToApprove(r)}><Check size={14} /> Approve</button>}
-        </PermissionGate>
+        <div className="flex justify-end gap-1">
+          <button className="btn-ghost !px-2 !py-1" onClick={() => printReceipt(r)}><Printer size={14} /></button>
+          <PermissionGate permission="returns:approve">
+            {r.status === 'pending' && <button className="btn-secondary !py-1" onClick={() => setToApprove(r)}><Check size={14} /> Approve</button>}
+          </PermissionGate>
+        </div>
       ),
     },
   ];
