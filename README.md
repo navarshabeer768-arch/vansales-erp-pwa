@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0032). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0034). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,103 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 3B.3: PDT Device Support, Scanning, Printing, Offline & Sync
+
+The requirements doc for this phase named specific hardware (Zebra
+TC21/TC26, Chainway C61/C66, Urovo DT50/RT40, Sunmi, Newland,
+Honeywell) and asked for native-level device integration, USB
+scanner/printer support, encrypted local storage, and true offline
+login. Before writing any code, it's worth being direct about what a
+browser-based PWA genuinely can and can't do, because several of
+those requirements are outside what a web page is allowed to touch —
+not a scope decision, a platform wall:
+
+- **Native SDK integration for any of those PDT brands' built-in scan
+  engines is impossible from a PWA.** Those are proprietary Android
+  SDKs (DataWedge, Chainway SDK, etc.) with zero browser access. The
+  actual, correct answer — and the reason this still works for all of
+  them — is that professional PDTs are normally configured in
+  **keyboard-wedge (HID) mode** for exactly this kind of web
+  deployment: the scan engine "types" the barcode into whatever field
+  has focus, then sends Enter. One well-built input listener
+  (`useHidScanListener`, timing keystroke bursts to tell a scan from
+  human typing) genuinely covers every listed device, plus external
+  Bluetooth/USB scanners, with no device-specific code at all.
+- **True USB-level device integration** (WebUSB) is narrow, Chrome-only,
+  and not how these devices are actually used — not built, and the HID
+  approach above makes it unnecessary.
+- **"Encrypted local database"** to native-app standards isn't
+  achievable with IndexedDB; **selective single-device remote logout**
+  isn't achievable without a backend service Supabase's client SDK
+  doesn't expose. Neither is built; both are stated as real limits, not
+  silently skipped.
+- **Offline login** in the literal sense (validating credentials with
+  zero network) doesn't fit Supabase Auth's model. What's built instead
+  — a cached, previously-validated session that keeps the app usable
+  offline, with a visible "offline mode" state — is a different,
+  weaker guarantee, and is described as such rather than relabeled as
+  full offline login.
+
+**What's genuinely built and live:**
+- **Device Management** (Settings → Devices) — devices register
+  themselves automatically on sign-in (model/manufacturer/OS
+  best-effort detected from the user agent), rename/assign to
+  employee+van+branch/block/remove, full login history per device.
+- **Universal Scanner** (Inventory → Quick Scan, plus usable anywhere
+  `<UniversalScanner>` is dropped in) — HID listener + camera fallback,
+  continuous/single mode, duplicate-scan suppression, auto lookup
+  across product barcode/SKU, batch number, serial number, and (via a
+  new `VSPQR:type:id` scheme for entity types that had no QR lookup
+  before) customer/invoice/van/warehouse. Product/batch QR/barcode
+  labels deliberately keep their original bare-code format so labels
+  already printed and stuck on real stock keep scanning correctly.
+  Every scan is logged (`scan_logs`) — the Scan Report.
+- **Fast Product Search** — name/SKU/barcode search, Recent Products
+  (auto-tracked per employee), Favourites (star toggle).
+- **Print Settings** (Settings → Print Settings) — copies, logo,
+  header/footer, QR/barcode/terms/signature toggles, paper size
+  (58mm/80mm/A4), margins — genuinely applied by `documentPrint.ts` to
+  every document from here on.
+- **Print documents** — Invoice already existed (POS thermal receipts).
+  This phase added Collection Receipt, Return Receipt, Customer
+  Statement (running balance from sales + collections), Stock Count
+  Report, and Daily Summary, plus Loading Slip/Unload Slip/Picking List
+  from 3B.2. Every print is logged (`print_logs`) — the Print Report.
+- **PIN lock** (Settings → Security) — a real per-device session lock:
+  SHA-256-hashed PIN (Web Crypto, random salt, never leaves the
+  device), auto-locks after 5 minutes idle or on demand, full-screen
+  unlock overlay.
+- **WebAuthn biometric unlock** — registers the device's platform
+  authenticator (fingerprint/face where supported) as a second way to
+  clear the same lock screen.
+  Both the PIN and biometric are stated plainly, in the UI itself, as a
+  quick-unlock for an *already-authenticated* session — the same trust
+  model as a phone's lock screen — not a second real login.
+- **Offline queue extended to Collections and Returns** (previously
+  Sales-only). Two new atomic, idempotent RPCs
+  (`create_collection_offline`, `create_return_offline`, both keyed by
+  a client-generated UUID exactly like `create_sale` already was) mean
+  a retried sync after a dropped connection can never double-charge a
+  collection or double-file a return. Queued while offline, replayed
+  automatically on reconnect.
+- **Sync Management** (Settings → Sync Management) — manual sync,
+  live online/offline status, pending-item count, failed items shown
+  with their error (auto-retried on the next sync rather than needing
+  a separate retry button, since every queued item is retried every
+  flush). Every flush logs to `sync_history` — the Sync Report.
+- **Device Login, Sync, Print, and Offline Activity Reports**
+  (Settings → Device & Sync Reports), each exportable like every other
+  table in this app.
+
+**Honest gaps, not silently dropped:** Offline support does not extend
+to Products, Customers, Warehouse Stock read-caching, Loading, or
+Unloading — those still need a live connection. "Background sync"
+here means "sync fires on reconnect and on manual trigger while the
+app is open," not a true OS-level background sync while the app is
+fully closed (patchy cross-browser support, and this project has no
+server to drive one anyway). Voice search was marked optional in the
+requirements and wasn't built.
 
 ## Phase 3B.2: Loading/Unloading Approval Workflow, Van-to-Van Transfers
 

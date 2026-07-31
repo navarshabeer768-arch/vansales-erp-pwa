@@ -50,6 +50,7 @@ import { VanTransferPage } from '@/pages/Van/VanTransferPage';
 import { DeviceManagementPage } from '@/pages/Settings/DeviceManagementPage';
 import { PrintSettingsPage } from '@/pages/Settings/PrintSettingsPage';
 import { DeviceReportsPage } from '@/pages/Settings/DeviceReportsPage';
+import { SyncManagementPage } from '@/pages/Settings/SyncManagementPage';
 import { GeofencesPage } from '@/pages/Gps/GeofencesPage';
 import { VehicleAlertsPage } from '@/pages/Gps/VehicleAlertsPage';
 import { StaffPage } from '@/pages/HR/StaffPage';
@@ -179,6 +180,7 @@ export default function App() {
               <Route path="devices" element={<DeviceManagementPage />} />
               <Route path="print" element={<PrintSettingsPage />} />
               <Route path="device-reports" element={<DeviceReportsPage />} />
+              <Route path="sync" element={<SyncManagementPage />} />
             </Route>
             </Route>
           </Route>

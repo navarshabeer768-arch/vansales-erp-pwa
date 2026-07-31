@@ -127,39 +127,3 @@ export function useCreateSale() {
 
   return { submit, submitting };
 }
-
-/** Flushes any sales that were queued while offline. Call on mount and on 'online'. */
-export function useOfflineSync() {
-  const [pendingCount, setPendingCount] = useState(0);
-  const [syncing, setSyncing] = useState(false);
-
-  const refreshCount = useCallback(async () => {
-    setPendingCount(await offlineDb.pendingSales.count());
-  }, []);
-
-  const flush = useCallback(async () => {
-    if (!navigator.onLine) return;
-    setSyncing(true);
-    const pending = await offlineDb.pendingSales.toArray();
-    for (const item of pending) {
-      const { error } = await supabase.rpc('create_sale', item.payload);
-      if (!error) {
-        await offlineDb.pendingSales.delete(item.client_uuid);
-      } else {
-        await offlineDb.pendingSales.update(item.client_uuid, { last_error: error.message });
-      }
-    }
-    await refreshCount();
-    setSyncing(false);
-  }, [refreshCount]);
-
-  useEffect(() => {
-    refreshCount();
-    flush();
-    window.addEventListener('online', flush);
-    return () => window.removeEventListener('online', flush);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return { pendingCount, syncing, flush };
-}

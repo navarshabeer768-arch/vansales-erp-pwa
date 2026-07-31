@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { offlineDb, isNetworkError, PendingReturn } from '@/lib/offlineDb';
 
 export type ReturnType = 'sales_return' | 'purchase_return';
 
@@ -24,12 +25,6 @@ export interface ReturnItemDraft {
   batch_id: string | null;
   quantity: number;
   unit_price: number;
-}
-
-function genReturnNo() {
-  const now = new Date();
-  const ym = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
-  return `RTN-${ym}-${Math.floor(Math.random() * 900000 + 100000)}`;
 }
 
 export interface ReturnItemRow { product_id: string; quantity: number; unit_price: number; product?: { name: string } | null; }
@@ -65,38 +60,34 @@ export function useReturns() {
     locationType: 'warehouse' | 'van';
     locationId: string;
     items: ReturnItemDraft[];
-  }) => {
+  }): Promise<{ error: string | null; id?: string; queued?: boolean }> => {
     if (!company || !user) return { error: 'Missing context' };
     if (params.items.length === 0) return { error: 'Add at least one product.' };
     if (params.returnType === 'purchase_return' && params.locationType !== 'warehouse') {
       return { error: 'Purchase returns must come from a warehouse.' };
     }
 
-    const totalAmount = params.items.reduce((sum, it) => sum + it.quantity * it.unit_price, 0);
+    const clientUuid = crypto.randomUUID();
+    const payload = {
+      p_return_type: params.returnType, p_customer_id: params.customerId || null, p_supplier_id: params.supplierId || null,
+      p_location_type: params.locationType, p_location_id: params.locationId,
+      p_items: params.items.map((it) => ({ product_id: it.product_id, batch_id: it.batch_id, quantity: it.quantity, unit_price: it.unit_price })),
+      p_client_uuid: clientUuid,
+    };
 
-    const { data: row, error: insertErr } = await supabase
-      .from('returns')
-      .insert({
-        company_id: company.id, return_no: genReturnNo(), return_type: params.returnType,
-        customer_id: params.customerId || null, supplier_id: params.supplierId || null,
-        location_type: params.locationType, location_id: params.locationId,
-        status: 'pending', note_type: params.returnType === 'sales_return' ? 'credit_note' : 'debit_note',
-        total_amount: totalAmount, created_by: user.id,
-      })
-      .select('id')
-      .single();
-    if (insertErr || !row) return { error: insertErr?.message ?? 'Failed to create return' };
-
-    const { error: itemsErr } = await supabase.from('return_items').insert(
-      params.items.map((it) => ({
-        return_id: row.id, product_id: it.product_id, batch_id: it.batch_id,
-        quantity: it.quantity, unit_price: it.unit_price, line_total: it.quantity * it.unit_price,
-      }))
-    );
-    if (itemsErr) return { error: itemsErr.message };
-
-    await load();
-    return { error: null, id: row.id as string };
+    try {
+      const { data, error } = await supabase.rpc('create_return_offline', payload);
+      if (error) return { error: error.message };
+      await load();
+      return { error: null, id: data as string };
+    } catch (err) {
+      if (isNetworkError(err)) {
+        const pending: PendingReturn = { client_uuid: clientUuid, payload, created_at: new Date().toISOString(), last_error: null };
+        await offlineDb.pendingReturns.put(pending);
+        return { error: null, queued: true };
+      }
+      return { error: err instanceof Error ? err.message : 'Failed to create return' };
+    }
   }, [company, user, load]);
 
   const approveReturn = useCallback(async (returnId: string) => {

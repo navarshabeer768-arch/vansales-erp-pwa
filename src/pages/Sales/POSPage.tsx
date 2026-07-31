@@ -4,7 +4,8 @@ import { useVans } from '@/hooks/useVans';
 import { useMyVanIds } from '@/hooks/useVanAssignments';
 import { useVanStock } from '@/hooks/useVanUnloadings';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useCreateSale, CartItem, PaymentEntry, calculateCartTotals, useOfflineSync } from '@/hooks/useSales';
+import { useCreateSale, CartItem, PaymentEntry, calculateCartTotals } from '@/hooks/useSales';
+import { useOfflineSyncManager } from '@/hooks/useOfflineSyncManager';
 import { useToast } from '@/contexts/ToastContext';
 import { Modal } from '@/components/ui/Modal';
 import { supabase } from '@/lib/supabase';
@@ -59,7 +60,7 @@ export function POSPage() {
   const { customers, reload: reloadCustomers } = useCustomers();
   const { push } = useToast();
   const { submit, submitting } = useCreateSale();
-  const { pendingCount, syncing } = useOfflineSync();
+  const { pendingCount, syncing } = useOfflineSyncManager();
 
   const [vanId, setVanId] = useState('');
   const [customerId, setCustomerId] = useState<string>('');

@@ -36,13 +36,15 @@ function CollectModal({ customer, onClose, onDone }: {
   const submit = async () => {
     if (!customer) return;
     setSubmitting(true);
-    const { error } = await recordCollection({
+    const { error, queued } = await recordCollection({
       customerId: customer.id, method, amount, referenceNo, chequeDate,
       appliedToSaleId: appliedSaleId || null,
     });
     setSubmitting(false);
     if (error) { push('error', error); return; }
-    push('success', 'Collection recorded.');
+    push(queued ? 'info' : 'success', queued
+      ? "No connection — collection saved on this device and will sync automatically when you're back online."
+      : 'Collection recorded.');
     onDone();
     onClose();
   };

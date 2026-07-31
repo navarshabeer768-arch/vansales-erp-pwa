@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { offlineDb, isNetworkError, PendingCollection } from '@/lib/offlineDb';
 
 export interface Collection {
   id: string;
@@ -22,12 +23,6 @@ export interface CustomerWithBalance {
   customer_code: string;
   outstanding_balance: number;
   credit_limit: number;
-}
-
-function genReceiptNo() {
-  const now = new Date();
-  const ym = `${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, '0')}`;
-  return `RCT-${ym}-${Math.floor(Math.random() * 900000 + 100000)}`;
 }
 
 export interface StatementLine { date: string; type: 'invoice' | 'payment'; reference: string; debit: number; credit: number; }
@@ -90,27 +85,30 @@ export function useCollections() {
   const recordCollection = useCallback(async (params: {
     customerId: string; method: Collection['method']; amount: number;
     referenceNo?: string; chequeDate?: string; appliedToSaleId?: string | null; notes?: string;
-  }) => {
+  }): Promise<{ error: string | null; queued?: boolean }> => {
     if (!company || !user) return { error: 'Missing context' };
     if (params.amount <= 0) return { error: 'Amount must be greater than zero' };
 
-    const { data: row, error: insertErr } = await supabase
-      .from('collections')
-      .insert({
-        company_id: company.id, receipt_no: genReceiptNo(), customer_id: params.customerId,
-        collected_by: user.id, method: params.method, amount: params.amount,
-        reference_no: params.referenceNo || null, cheque_date: params.chequeDate || null,
-        applied_to_sale_id: params.appliedToSaleId || null, notes: params.notes || null,
-      })
-      .select('id')
-      .single();
-    if (insertErr || !row) return { error: insertErr?.message ?? 'Failed to record collection' };
+    const clientUuid = crypto.randomUUID();
+    const payload = {
+      p_customer_id: params.customerId, p_method: params.method, p_amount: params.amount,
+      p_reference_no: params.referenceNo || null, p_cheque_date: params.chequeDate || null,
+      p_applied_to_sale_id: params.appliedToSaleId || null, p_notes: params.notes || null, p_client_uuid: clientUuid,
+    };
 
-    const { error: rpcErr } = await supabase.rpc('record_collection', { p_collection_id: row.id });
-    if (rpcErr) return { error: rpcErr.message };
-
-    await load();
-    return { error: null };
+    try {
+      const { error } = await supabase.rpc('create_collection_offline', payload);
+      if (error) return { error: error.message };
+      await load();
+      return { error: null };
+    } catch (err) {
+      if (isNetworkError(err)) {
+        const pending: PendingCollection = { client_uuid: clientUuid, payload, created_at: new Date().toISOString(), last_error: null };
+        await offlineDb.pendingCollections.put(pending);
+        return { error: null, queued: true };
+      }
+      return { error: err instanceof Error ? err.message : 'Failed to record collection' };
+    }
   }, [company, user, load]);
 
   return { collections, loading, reload: load, recordCollection };

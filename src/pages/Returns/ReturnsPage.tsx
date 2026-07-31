@@ -49,14 +49,16 @@ function NewReturnModal({ open, onClose, onCreated }: { open: boolean; onClose: 
   const submit = async () => {
     if (!locationId) { push('error', 'Select a location.'); return; }
     setSubmitting(true);
-    const { error } = await createReturn({
+    const { error, queued } = await createReturn({
       returnType, customerId: returnType === 'sales_return' ? customerId : null,
       supplierId: returnType === 'purchase_return' ? supplierId : null,
       locationType, locationId, items,
     });
     setSubmitting(false);
     if (error) { push('error', error); return; }
-    push('success', 'Return created — pending approval.');
+    push(queued ? 'info' : 'success', queued
+      ? "No connection — return saved on this device and will sync automatically when you're back online."
+      : 'Return created — pending approval.');
     reset();
     onCreated();
     onClose();
