@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { generateSyntheticEmail } from '@/lib/syntheticEmail';
-import { getDeviceId, getDeviceLabel } from '@/lib/deviceId';
+import { getDeviceId, getDeviceLabel, getDeviceInfo } from '@/lib/deviceId';
 import type { AppUser, Company, RoleCode } from '@/types/database';
 
 interface AuthState {
@@ -119,6 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: 'Invalid Store ID, username, or password.' };
     }
     await supabase.rpc('register_device', { p_device_id: getDeviceId() });
+
+    const info = getDeviceInfo();
+    await supabase.rpc('register_device_login', {
+      p_device_uid: getDeviceId(), p_device_name: getDeviceLabel(), p_device_model: info.model,
+      p_manufacturer: info.manufacturer, p_os_version: info.osVersion, p_user_agent: navigator.userAgent,
+    });
+
     return { error: null };
   }, []);
 

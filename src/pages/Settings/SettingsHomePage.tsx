@@ -11,6 +11,7 @@ export function SettingsHomePage() {
     { to: '/settings/security', label: 'Security', end: false, show: true },
     { to: '/settings/roles', label: 'Roles & Permissions', end: false, show: can('settings:edit') },
     { to: '/settings/login-history', label: 'Login History', end: false, show: can('hr:edit') },
+    { to: '/settings/devices', label: 'Devices', end: false, show: can('devices:manage') },
   ].filter((t) => t.show);
 
   return (
