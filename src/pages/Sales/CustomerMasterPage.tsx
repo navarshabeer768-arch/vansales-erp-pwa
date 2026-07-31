@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, LayoutGrid, Table as TableIcon, CheckSquare, Square } from 'lucide-react';
+import { Plus, Search, LayoutGrid, Table as TableIcon, CheckSquare, Square, Wallet } from 'lucide-react';
 import { useCustomerMaster, CustomerMaster, CustomerStatus, CustomerFilters } from '@/hooks/useCustomerMaster';
 import { useCustomerTypes, useCustomerGroups, useCustomerCategories, useCustomerChannels, useTerritories } from '@/hooks/useCustomerLookups';
 import { useRoutes } from '@/hooks/useRoutes';
@@ -66,9 +66,12 @@ export function CustomerMasterPage() {
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Customer Master</h1>
           <p className="text-sm text-slate-500">The single customer record used by Sales, Collections, Returns, Visits, Route Planning, and Reports.</p>
         </div>
-        <PermissionGate permission="customers:create">
-          <button className="btn-primary" onClick={() => setNewOpen(true)}><Plus size={16} /> New customer</button>
-        </PermissionGate>
+        <div className="flex gap-2">
+          <button className="btn-secondary" onClick={() => navigate('/customers/credit-dashboard')}><Wallet size={16} /> Credit Dashboard</button>
+          <PermissionGate permission="customers:create">
+            <button className="btn-primary" onClick={() => setNewOpen(true)}><Plus size={16} /> New customer</button>
+          </PermissionGate>
+        </div>
       </div>
 
       <div className="card space-y-3 p-4">

@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0035). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0036). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,68 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 4A.2 Part 1: Customer Credit & Payment Management
+
+Followed this phase's own "inspect before implementing" instruction:
+`customers.credit_limit`/`outstanding_balance` have existed since Phase 1
+and are actively read/written by Collections, the legacy quick-create
+hook, and the Customer Profile Overview tab (Phase 4A.1). Rather than
+creating a second, disconnected place for credit data, `customer_credit_profiles`
+becomes the new authoritative source for `credit_limit` going forward,
+with a sync trigger keeping `customers.credit_limit` mirrored — none of
+those three existing screens needed to change.
+
+- **Customer Credit Profile** — every field the doc listed, auto-created
+  for every customer via a trigger on customer insert (and backfilled for
+  every customer that already existed). "One credit profile per customer"
+  is a database guarantee, not something the UI has to remember to do.
+- **Configurable Payment Terms/Methods/Risk Levels** (Settings → Credit &
+  Payment) — system defaults + per-company custom, same pattern as every
+  other configurable lookup in this app.
+- **Cash/Credit/Hybrid**, switchable only with permission, full history
+  (`customer_credit_history`).
+- **Temporary credit** with automatic restoration after expiry
+  (`expire_temporary_credits()`, called on Credit Dashboard load — same
+  honest "no real cron" pattern as vehicle alerts from an earlier phase).
+- **Available Credit** — one reusable function
+  (`customer_available_credit()`), correctly wired to subtract pending
+  orders and reserved credit even though both resolve to 0 today (no
+  Sales Orders module exists yet, and this phase explicitly excludes
+  starting one) — the shape is right so nothing has to change when that
+  module eventually arrives.
+- **Credit Validation Engine** (`validate_customer_credit()`) — the
+  reusable service future sales modules are meant to call. Built and
+  callable; **not wired into `create_sale`'s enforcement**, since that's
+  Sales Invoices territory and this phase's own instructions explicitly
+  say not to start that module here.
+- **Automatic credit status** (Normal/Warning/Near Limit/Over
+  Limit/Blocked) — `refresh_customer_credit_status()` factors in
+  outstanding balance, temporary credit, and overdue balances (using
+  `sales.balance_amount`, already a generated column from Phase 1, against
+  the customer's payment term credit+grace days).
+- **Approval workflow** — `customer_credit_approvals` is a structured
+  request queue with real old/new values (draft→pending→approved/
+  rejected/cancelled/expired), intentionally separate from the generic
+  `approval_history` action log from Phase 3B.2 (which was widened to
+  also log credit actions, rather than building a second parallel log —
+  that table was never designed to hold a before/after value pair, which
+  a credit-limit approval genuinely needs).
+- **Customer Credit Dashboard** (Customers → Credit Dashboard) — all the
+  widgets the doc listed, plus a live pending-approvals queue with
+  approve/reject actions right there.
+- **Financial tab** on the Customer Profile (previously an explicit
+  Part-2 placeholder) is now real: status/limit/available credit at a
+  glance, type/payment-term/risk-level editing, credit-increase and
+  temporary-credit requests, block/unblock, and both history tables.
+
+**Explicitly out of scope, per this phase's own instructions** — not
+started: Customer Pricing, Opening Balances, Customer Ledger, Sales
+Orders, Sales Invoices, Collections, and Returns. The offline support
+this phase asked for (view credit status/terms/limits offline, no
+offline approval of overrides/temporary credit/risk changes) was not
+built in this pass — it's real additional work on top of the Phase
+3B.3 offline queue, not a small addition.
 
 ## Phase 4A.1 Part 1: Enterprise Customer Master
 

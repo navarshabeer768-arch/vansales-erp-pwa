@@ -6,6 +6,9 @@ import { useCustomerAddresses } from '@/hooks/useCustomerAddresses';
 import { useCustomerContacts } from '@/hooks/useCustomerContacts';
 import { useCustomerAssignments, useCustomerHistory, useCustomerAuditHistory, CustomerRoleCode } from '@/hooks/useCustomerAssignments';
 import { useAssignableStaff } from '@/hooks/useVanAssignments';
+import { useCustomerCredit, useCreditHistory, CreditType, CreditStatus } from '@/hooks/useCustomerCredit';
+import { useCreditApprovals } from '@/hooks/useCreditApprovals';
+import { usePaymentTerms, useRiskLevels } from '@/hooks/useCreditLookups';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
@@ -263,6 +266,167 @@ function ActivityAndAuditTab({ customerId }: { customerId: string }) {
   );
 }
 
+const CREDIT_STATUS_BADGE: Record<CreditStatus, string> = {
+  normal: 'badge-green', warning: 'badge-amber', near_limit: 'badge-amber', over_limit: 'badge-red',
+  blocked: 'badge-red', suspended: 'badge-red', inactive: 'badge-slate',
+};
+
+function FinancialTab({ customerId }: { customerId: string }) {
+  const { profile, availableCredit, updateProfile, setStatus, changeType } = useCustomerCredit(customerId);
+  const { submit: submitApproval } = useCreditApprovals(customerId);
+  const { terms } = usePaymentTerms();
+  const { levels } = useRiskLevels();
+  const { history, statusHistory } = useCreditHistory(customerId);
+  const { push } = useToast();
+
+  const [tempAmount, setTempAmount] = useState('');
+  const [tempExpiry, setTempExpiry] = useState('');
+  const [tempReason, setTempReason] = useState('');
+  const [newLimit, setNewLimit] = useState('');
+  const [blockReason, setBlockReason] = useState('');
+
+  if (!profile) return <p className="text-sm text-slate-400">Loading credit profile…</p>;
+
+  const requestCreditIncrease = async () => {
+    if (!newLimit) { push('error', 'Enter a new limit.'); return; }
+    const { error } = profile.require_approval
+      ? await submitApproval({ customerId, requestType: 'credit_increase', newValue: newLimit })
+      : await updateProfile({ credit_limit: Number(newLimit) });
+    push(error ? 'error' : 'success', error ?? (profile.require_approval ? 'Submitted for approval.' : 'Credit limit updated.'));
+    if (!error) setNewLimit('');
+  };
+
+  const requestTemporaryCredit = async () => {
+    if (!tempAmount || !tempExpiry) { push('error', 'Enter an amount and expiry date.'); return; }
+    const { error } = await submitApproval({ customerId, requestType: 'temporary_credit', newValue: tempAmount, reason: tempReason, expiryDate: tempExpiry });
+    push(error ? 'error' : 'success', error ?? 'Temporary credit requested — pending approval.');
+    if (!error) { setTempAmount(''); setTempExpiry(''); setTempReason(''); }
+  };
+
+  const handleTypeChange = async (newType: CreditType) => {
+    const { error } = await changeType(newType);
+    push(error ? 'error' : 'success', error ?? 'Customer type updated.');
+  };
+
+  const handleBlock = async () => {
+    const { error } = await setStatus('blocked', blockReason);
+    push(error ? 'error' : 'success', error ?? 'Customer blocked.');
+    setBlockReason('');
+  };
+
+  const handleUnblock = async () => {
+    const { error } = await setStatus('normal', 'Manually unblocked');
+    push(error ? 'error' : 'success', error ?? 'Customer unblocked.');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="card p-3"><p className="text-xs text-slate-500">Credit status</p><p className="mt-1"><span className={CREDIT_STATUS_BADGE[profile.credit_status]}>{profile.credit_status.replace('_', ' ')}</span></p></div>
+        <div className="card p-3"><p className="text-xs text-slate-500">Credit limit</p><p className="mt-1 text-lg font-bold">{profile.credit_limit.toFixed(2)}</p></div>
+        <div className="card p-3"><p className="text-xs text-slate-500">Available credit</p><p className="mt-1 text-lg font-bold">{availableCredit?.toFixed(2) ?? '—'}</p></div>
+        <div className="card p-3"><p className="text-xs text-slate-500">Temporary limit</p><p className="mt-1 text-lg font-bold">{profile.temporary_credit_limit?.toFixed(2) ?? '—'}</p>{profile.temporary_credit_expiry && <p className="text-xs text-slate-500">Until {profile.temporary_credit_expiry}</p>}</div>
+      </div>
+
+      <div className="card space-y-3 p-4">
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="label">Customer type</label>
+            <PermissionGate permission="customers:edit">
+              <select className="input" value={profile.credit_type} onChange={(e) => handleTypeChange(e.target.value as CreditType)}>
+                <option value="cash">Cash</option><option value="credit">Credit</option><option value="hybrid">Hybrid</option>
+              </select>
+            </PermissionGate>
+          </div>
+          <div>
+            <label className="label">Default payment term</label>
+            <select className="input" value={profile.default_payment_term_id ?? ''} onChange={(e) => updateProfile({ default_payment_term_id: e.target.value || null })}>
+              <option value="">— None —</option>
+              {terms.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Risk level</label>
+            <select className="input" value={profile.risk_level_id ?? ''} onChange={(e) => updateProfile({ risk_level_id: e.target.value || null })}>
+              <option value="">— Unrated —</option>
+              {levels.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={profile.allow_partial_payments} onChange={(e) => updateProfile({ allow_partial_payments: e.target.checked })} /> Allow partial payments</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={profile.require_approval} onChange={(e) => updateProfile({ require_approval: e.target.checked })} /> Require approval for credit increase</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={profile.block_on_overdue} onChange={(e) => updateProfile({ block_on_overdue: e.target.checked })} /> Block on overdue invoices</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={profile.block_on_credit_limit} onChange={(e) => updateProfile({ block_on_credit_limit: e.target.checked })} /> Block on credit limit exceeded</label>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="card space-y-2 p-4">
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Request credit increase</h3>
+          <input type="number" className="input" placeholder="New credit limit" value={newLimit} onChange={(e) => setNewLimit(e.target.value)} />
+          <PermissionGate permission="customer_credit:edit">
+            <button className="btn-primary w-full" onClick={requestCreditIncrease}>{profile.require_approval ? 'Submit for approval' : 'Update limit'}</button>
+          </PermissionGate>
+        </div>
+        <div className="card space-y-2 p-4">
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Request temporary credit</h3>
+          <input type="number" className="input" placeholder="Temporary limit" value={tempAmount} onChange={(e) => setTempAmount(e.target.value)} />
+          <input type="date" className="input" value={tempExpiry} onChange={(e) => setTempExpiry(e.target.value)} />
+          <input className="input" placeholder="Reason" value={tempReason} onChange={(e) => setTempReason(e.target.value)} />
+          <PermissionGate permission="customer_credit:temporary_credit">
+            <button className="btn-primary w-full" onClick={requestTemporaryCredit}>Submit for approval</button>
+          </PermissionGate>
+        </div>
+      </div>
+
+      <div className="card p-4">
+        <h3 className="mb-2 font-semibold text-slate-800 dark:text-slate-100">Block / unblock</h3>
+        {profile.credit_status === 'blocked' || profile.credit_status === 'suspended' ? (
+          <PermissionGate permission="customer_credit:unblock">
+            <button className="btn-primary" onClick={handleUnblock}>Unblock customer</button>
+          </PermissionGate>
+        ) : (
+          <PermissionGate permission="customer_credit:block">
+            <div className="flex gap-2">
+              <input className="input" placeholder="Reason for blocking" value={blockReason} onChange={(e) => setBlockReason(e.target.value)} />
+              <button className="btn-danger shrink-0" onClick={handleBlock}>Block customer</button>
+            </div>
+          </PermissionGate>
+        )}
+      </div>
+
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Credit history</h3>
+        <div className="card overflow-hidden">
+          <table className="table-base">
+            <thead><tr><th>Field</th><th>From</th><th>To</th><th>Reason</th><th>When</th></tr></thead>
+            <tbody>
+              {history.length === 0 ? <tr><td colSpan={5} className="py-6 text-center text-slate-400">No credit changes yet.</td></tr> : history.map((h) => (
+                <tr key={h.id}><td className="capitalize">{h.field_name.replace(/_/g, ' ')}</td><td>{h.old_value ?? '—'}</td><td>{h.new_value ?? '—'}</td><td>{h.reason ?? '—'}</td><td>{new Date(h.changed_at).toLocaleString()}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Credit status history</h3>
+        <div className="card overflow-hidden">
+          <table className="table-base">
+            <thead><tr><th>From</th><th>To</th><th>Reason</th><th>When</th></tr></thead>
+            <tbody>
+              {statusHistory.length === 0 ? <tr><td colSpan={4} className="py-6 text-center text-slate-400">No status changes yet.</td></tr> : statusHistory.map((s) => (
+                <tr key={s.id}><td>{s.old_status ?? '—'}</td><td>{s.new_status}</td><td>{s.reason ?? '—'}</td><td>{new Date(s.changed_at).toLocaleString()}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CustomerProfilePage() {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
@@ -332,7 +496,7 @@ export function CustomerProfilePage() {
       )}
       {tab === 'documents' && <div className="card p-10 text-center text-sm text-slate-400">Documents — coming in Part 2.</div>}
       {tab === 'bank' && <div className="card p-10 text-center text-sm text-slate-400">Bank Details — coming in Part 2.</div>}
-      {tab === 'financial' && <div className="card p-10 text-center text-sm text-slate-400">Financial — coming in Part 2.</div>}
+      {tab === 'financial' && <FinancialTab customerId={customer.id} />}
       {tab === 'activity' && <ActivityAndAuditTab customerId={customer.id} />}
     </div>
   );

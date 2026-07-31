@@ -36,6 +36,7 @@ import { VanStaffReportPage } from '@/pages/Van/VanStaffReportPage';
 import { VanUnloadingPage } from '@/pages/Van/VanUnloadingPage';
 import { SalesHomePage } from '@/pages/Sales/SalesHomePage';
 import { CustomerMasterPage } from '@/pages/Sales/CustomerMasterPage';
+import { CreditDashboardPage } from '@/pages/Sales/CreditDashboardPage';
 import { CustomerProfilePage } from '@/pages/Sales/CustomerProfilePage';
 import { POSPage } from '@/pages/Sales/POSPage';
 import { SalesHistoryPage } from '@/pages/Sales/SalesHistoryPage';
@@ -54,6 +55,7 @@ import { PrintSettingsPage } from '@/pages/Settings/PrintSettingsPage';
 import { DeviceReportsPage } from '@/pages/Settings/DeviceReportsPage';
 import { SyncManagementPage } from '@/pages/Settings/SyncManagementPage';
 import { CustomerMasterSettingsPage } from '@/pages/Settings/CustomerMasterSettingsPage';
+import { CreditSettingsPage } from '@/pages/Settings/CreditSettingsPage';
 import { GeofencesPage } from '@/pages/Gps/GeofencesPage';
 import { VehicleAlertsPage } from '@/pages/Gps/VehicleAlertsPage';
 import { StaffPage } from '@/pages/HR/StaffPage';
@@ -135,6 +137,7 @@ export default function App() {
             <Route path="van-unloading" element={<VanUnloadingPage />} />
 
             <Route path="customers" element={<CustomerMasterPage />} />
+            <Route path="customers/credit-dashboard" element={<CreditDashboardPage />} />
             <Route path="customers/:customerId" element={<CustomerProfilePage />} />
 
             <Route path="sales" element={<SalesHomePage />}>
@@ -188,6 +191,7 @@ export default function App() {
               <Route path="device-reports" element={<DeviceReportsPage />} />
               <Route path="sync" element={<SyncManagementPage />} />
               <Route path="customer-master" element={<CustomerMasterSettingsPage />} />
+              <Route path="credit" element={<CreditSettingsPage />} />
             </Route>
             </Route>
           </Route>
