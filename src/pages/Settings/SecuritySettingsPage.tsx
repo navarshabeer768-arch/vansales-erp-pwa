@@ -1,10 +1,73 @@
 import { useState } from 'react';
-import { ShieldCheck, LogOut, Smartphone } from 'lucide-react';
+import { ShieldCheck, LogOut, Smartphone, Lock, Fingerprint } from 'lucide-react';
 import { useSecurity } from '@/hooks/useSecurity';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
 import { getDeviceLabel } from '@/lib/deviceId';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { hasPinSet, setPin, clearPin } from '@/lib/pinLock';
+import { isBiometricSupported, hasBiometricRegistered, registerBiometric, clearBiometric } from '@/lib/biometricAuth';
+
+function PinAndBiometricSection() {
+  const { user } = useAuth();
+  const { push } = useToast();
+  const [pinSet, setPinSet] = useState(hasPinSet());
+  const [bioRegistered, setBioRegistered] = useState(hasBiometricRegistered());
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+
+  const handleSetPin = async () => {
+    if (newPin.length < 4) { push('error', 'PIN must be at least 4 digits.'); return; }
+    if (newPin !== confirmPin) { push('error', 'PINs do not match.'); return; }
+    await setPin(newPin);
+    setPinSet(true);
+    setNewPin(''); setConfirmPin('');
+    push('success', 'PIN set — this device will lock after 5 minutes of inactivity.');
+  };
+
+  const handleClearPin = () => {
+    clearPin();
+    clearBiometric();
+    setPinSet(false);
+    setBioRegistered(false);
+    push('success', 'PIN lock removed from this device.');
+  };
+
+  const handleRegisterBiometric = async () => {
+    if (!user) return;
+    const { error } = await registerBiometric(user.id, user.full_name);
+    if (error) { push('error', error); return; }
+    setBioRegistered(true);
+    push('success', 'Biometric unlock registered on this device.');
+  };
+
+  return (
+    <div className="card space-y-4 p-4">
+      <h2 className="flex items-center gap-2 font-semibold text-slate-800 dark:text-slate-100"><Lock size={16} /> PIN &amp; biometric lock (this device)</h2>
+      <p className="text-sm text-slate-500">
+        Locks this device's session after 5 minutes idle — a quick-unlock for an already-signed-in session, not a
+        replacement for your account password.
+      </p>
+
+      {!pinSet ? (
+        <div className="grid grid-cols-2 gap-3">
+          <input type="password" inputMode="numeric" className="input" placeholder="New PIN (4+ digits)" value={newPin} onChange={(e) => setNewPin(e.target.value)} />
+          <input type="password" inputMode="numeric" className="input" placeholder="Confirm PIN" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} />
+          <button className="btn-primary col-span-2" onClick={handleSetPin}>Set PIN</button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="badge-green">PIN lock active</span>
+          <button className="btn-secondary" onClick={handleClearPin}>Remove PIN lock</button>
+          {isBiometricSupported() && !bioRegistered && (
+            <button className="btn-secondary" onClick={handleRegisterBiometric}><Fingerprint size={14} /> Register biometric unlock</button>
+          )}
+          {bioRegistered && <span className="badge-green flex items-center gap-1"><Fingerprint size={12} /> Biometric registered</span>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function SecuritySettingsPage() {
   const { changePassword, signOutAllDevices, saving } = useSecurity();
@@ -95,6 +158,8 @@ export function SecuritySettingsPage() {
         onConfirm={handleSignOutAll}
         onCancel={() => setConfirmSignOutAll(false)}
       />
+
+      <PinAndBiometricSection />
     </div>
   );
 }

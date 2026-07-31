@@ -13,6 +13,7 @@ export function SettingsHomePage() {
     { to: '/settings/login-history', label: 'Login History', end: false, show: can('hr:edit') },
     { to: '/settings/devices', label: 'Devices', end: false, show: can('devices:manage') },
     { to: '/settings/print', label: 'Print Settings', end: false, show: can('settings:edit') },
+    { to: '/settings/device-reports', label: 'Device & Sync Reports', end: false, show: can('devices:manage') },
   ].filter((t) => t.show);
 
   return (
