@@ -6,6 +6,7 @@ const TABS = [
   { to: '/inventory/catalog', label: 'Catalog settings', end: false },
   { to: '/inventory/serials', label: 'Serial Numbers', end: false },
   { to: '/inventory/labels', label: 'Label Printing', end: false },
+  { to: '/inventory/quick-scan', label: 'Quick Scan', end: false },
 ];
 
 export function InventoryHomePage() {

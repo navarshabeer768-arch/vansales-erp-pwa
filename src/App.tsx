@@ -17,6 +17,7 @@ import { PlatformStaffPage } from '@/pages/Admin/PlatformStaffPage';
 import { CompanyDetailPage } from '@/pages/Admin/CompanyDetailPage';
 import { DashboardPage } from '@/pages/Dashboard/DashboardPage';
 import { InventoryHomePage } from '@/pages/Inventory/InventoryHomePage';
+import { QuickScanPage } from '@/pages/Inventory/QuickScanPage';
 import { ProductsPage } from '@/pages/Inventory/ProductsPage';
 import { CatalogSettingsPage } from '@/pages/Inventory/CatalogSettingsPage';
 import { SerialsPage } from '@/pages/Inventory/SerialsPage';
@@ -104,6 +105,7 @@ export default function App() {
                   <LabelPrintingPage />
                 </Suspense>
               } />
+              <Route path="quick-scan" element={<QuickScanPage />} />
             </Route>
 
             <Route path="warehouse" element={<WarehouseHomePage />}>
