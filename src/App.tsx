@@ -37,6 +37,8 @@ import { VanUnloadingPage } from '@/pages/Van/VanUnloadingPage';
 import { SalesHomePage } from '@/pages/Sales/SalesHomePage';
 import { CustomerMasterPage } from '@/pages/Sales/CustomerMasterPage';
 import { CreditDashboardPage } from '@/pages/Sales/CreditDashboardPage';
+import { PriceListsPage } from '@/pages/Sales/PriceListsPage';
+import { PricingDashboardPage } from '@/pages/Sales/PricingDashboardPage';
 import { CustomerProfilePage } from '@/pages/Sales/CustomerProfilePage';
 import { POSPage } from '@/pages/Sales/POSPage';
 import { SalesHistoryPage } from '@/pages/Sales/SalesHistoryPage';
@@ -138,6 +140,8 @@ export default function App() {
 
             <Route path="customers" element={<CustomerMasterPage />} />
             <Route path="customers/credit-dashboard" element={<CreditDashboardPage />} />
+            <Route path="customers/price-lists" element={<PriceListsPage />} />
+            <Route path="customers/pricing-dashboard" element={<PricingDashboardPage />} />
             <Route path="customers/:customerId" element={<CustomerProfilePage />} />
 
             <Route path="sales" element={<SalesHomePage />}>

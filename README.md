@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0036). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0037). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,82 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 4A.2 Part 2: Customer Pricing & Financial Foundation
+
+Followed this phase's own "inspect before implementing" instruction:
+`products.wholesale_price/retail_price/offer_price` and
+`customers.price_level` have existed since Phase 1, but **neither is
+actually read anywhere** — POS only ever fetches `products.selling_price`.
+Dead schema, not live logic, so there was no existing price resolution
+to break. `resolve_customer_price()` is the real, reusable Price
+Priority Engine the doc asks for; it is **not** wired into POS/
+`create_sale`'s actual fetch, since that's Sales Invoices territory
+this phase explicitly excludes touching — same precedent as
+`validate_customer_credit()` in Part 1. `customer_groups.default_discount_pct`
+(existed since Phase 1, extended in 4A.1) is reused as-is for the
+"Customer Group Price" priority tier rather than inventing a second
+group-pricing mechanism.
+
+**A real bug caught before it shipped:** the first draft of the opening-
+balance accounting integration assumed a `'1100'` Chart-of-Accounts
+code convention for Accounts Receivable. On checking, **no Chart of
+Accounts is ever seeded anywhere in this codebase** — that assumption
+would have silently posted nothing, ever, for any company. Fixed to
+look up accounts by name pattern (`%receivable%`, `%opening%`/`%retained%`)
+instead, with honest, visible degradation: the customer balance and
+ledger effects always apply; the journal entry only posts if the
+company has actually set up recognizably-named accounts.
+
+- **Price Lists** (Customers → Pricing Dashboard → Manage price lists) —
+  unlimited, with currency/priority/status/effective-expiry/branch.
+- **Product Price Rules** — one generic table (`product_price_rules`)
+  covering price-list, branch, route, and promotion pricing as
+  different *scopes* on the same shape, rather than four separate
+  tables for what's structurally the same rule.
+- **Customer-specific prices** — highest priority in the engine.
+- **Price Priority Engine** (`resolve_customer_price()`): Customer
+  Price → Customer Group Price → Price List → Branch Price →
+  Promotion → Standard Selling Price. Callable and correct; not yet
+  the live price POS charges.
+- **Customer Discounts** — percentage/fixed/product/category/invoice,
+  with approval-required and temporary+auto-expiry support.
+- **Free Quantity Rules** (`free_quantity_rules`) — Buy X Get Y schemes,
+  schema and hook built; **no management UI yet** (see gaps below).
+- **Opening Balances** — genuinely integrated with Accounting: approval
+  posts a real journal entry (subject to the Chart-of-Accounts caveat
+  above) and updates both `customers.outstanding_balance` and the new
+  ledger in the same transaction.
+- **Customer Ledger Foundation** — `customer_ledger` (running balance
+  header, auto-maintained by a trigger) + `customer_ledger_transactions`
+  (the append-only log). Only real transactions exist in it today
+  (opening balances); Sales Invoices/Collections/Returns/Credit-Notes/
+  Debit-Notes/Adjustments/Write-offs are explicitly future phases per
+  this phase's own instructions — nothing fake was seeded.
+- **Aging Structure** — configurable buckets seeded with the doc's own
+  defaults (Current/1-30/31-60/61-90/91-120/120+), populated today from
+  opening balances; future invoices feed the same structure automatically
+  once that module exists.
+- **Pricing Dashboard** (Customers → Pricing Dashboard) — every widget
+  the doc listed.
+- **Customer Profile → Pricing & Ledger tab** (new) — assign price
+  lists, set customer-specific prices, manage discounts, record/approve
+  opening balances, and view the account summary/aging/ledger, all in
+  one place per customer.
+
+**Real gaps, not silently dropped:**
+- No standalone Free Quantity Rules management page — the schema, RLS,
+  and hook exist and are usable via the API, but there's no UI screen
+  for it yet.
+- No consolidated Reports page for this phase (Price List/Customer
+  Pricing/Special Price/Discount/Free Goods/Opening Balance/Customer
+  Balance/Ledger Structure/Aging Structure reports) — the underlying
+  data is all queryable (and the Pricing Dashboard covers several of
+  these at a glance), but dedicated exportable report views weren't
+  built.
+- Offline viewing of assigned pricing/price lists/discount rules/opening
+  balance summary was not built — real additional work on the existing
+  offline queue, not a small addition.
 
 ## Phase 4A.2 Part 1: Customer Credit & Payment Management
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, LayoutGrid, Table as TableIcon, CheckSquare, Square, Wallet } from 'lucide-react';
+import { Plus, Search, LayoutGrid, Table as TableIcon, CheckSquare, Square, Wallet, Tag } from 'lucide-react';
 import { useCustomerMaster, CustomerMaster, CustomerStatus, CustomerFilters } from '@/hooks/useCustomerMaster';
 import { useCustomerTypes, useCustomerGroups, useCustomerCategories, useCustomerChannels, useTerritories } from '@/hooks/useCustomerLookups';
 import { useRoutes } from '@/hooks/useRoutes';
@@ -68,6 +68,7 @@ export function CustomerMasterPage() {
         </div>
         <div className="flex gap-2">
           <button className="btn-secondary" onClick={() => navigate('/customers/credit-dashboard')}><Wallet size={16} /> Credit Dashboard</button>
+          <button className="btn-secondary" onClick={() => navigate('/customers/pricing-dashboard')}><Tag size={16} /> Pricing Dashboard</button>
           <PermissionGate permission="customers:create">
             <button className="btn-primary" onClick={() => setNewOpen(true)}><Plus size={16} /> New customer</button>
           </PermissionGate>

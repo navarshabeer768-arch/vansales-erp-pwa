@@ -9,6 +9,10 @@ import { useAssignableStaff } from '@/hooks/useVanAssignments';
 import { useCustomerCredit, useCreditHistory, CreditType, CreditStatus } from '@/hooks/useCustomerCredit';
 import { useCreditApprovals } from '@/hooks/useCreditApprovals';
 import { usePaymentTerms, useRiskLevels } from '@/hooks/useCreditLookups';
+import { usePriceLists, useCustomerPriceLists } from '@/hooks/usePriceLists';
+import { useCustomerProductPrices, useCustomerDiscounts, DiscountType } from '@/hooks/useCustomerPricingRules';
+import { useCustomerOpeningBalance, useCustomerLedger } from '@/hooks/useCustomerFinancials';
+import { useProducts } from '@/hooks/useProducts';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
@@ -427,6 +431,195 @@ function FinancialTab({ customerId }: { customerId: string }) {
   );
 }
 
+function PricingTab({ customerId }: { customerId: string }) {
+  const { priceLists } = usePriceLists();
+  const { assignments, assign, remove } = useCustomerPriceLists(customerId);
+  const { prices, create: createPrice, remove: removePrice } = useCustomerProductPrices(customerId);
+  const { discounts, create: createDiscount, cancel: cancelDiscount } = useCustomerDiscounts(customerId);
+  const { products } = useProducts();
+  const { balance, create: createOpeningBalance, approve: approveOB, reject: rejectOB } = useCustomerOpeningBalance(customerId);
+  const { summary, transactions, aging } = useCustomerLedger(customerId);
+  const { push } = useToast();
+
+  const [selectedListId, setSelectedListId] = useState('');
+  const [assignmentType, setAssignmentType] = useState<'default' | 'secondary' | 'temporary'>('default');
+
+  const [priceProductId, setPriceProductId] = useState('');
+  const [priceValue, setPriceValue] = useState(0);
+
+  const [discountType, setDiscountType] = useState<DiscountType>('percentage');
+  const [discountValue, setDiscountValue] = useState(0);
+  const [discountRequiresApproval, setDiscountRequiresApproval] = useState(false);
+
+  const [obType, setObType] = useState<'debit' | 'credit'>('debit');
+  const [obAmount, setObAmount] = useState(0);
+  const [obRemarks, setObRemarks] = useState('');
+
+  const handleAssignList = async () => {
+    if (!selectedListId) { push('error', 'Select a price list.'); return; }
+    const { error } = await assign(selectedListId, assignmentType);
+    push(error ? 'error' : 'success', error ?? 'Price list assigned.');
+  };
+
+  const handleAddPrice = async () => {
+    if (!priceProductId || priceValue <= 0) { push('error', 'Select a product and enter a price.'); return; }
+    const { error } = await createPrice({ productId: priceProductId, price: priceValue });
+    push(error ? 'error' : 'success', error ?? 'Customer price set.');
+  };
+
+  const handleAddDiscount = async () => {
+    if (discountValue <= 0) { push('error', 'Enter a discount value.'); return; }
+    const { error } = await createDiscount({ discountType, discountValue, requiresApproval: discountRequiresApproval });
+    push(error ? 'error' : 'success', error ?? (discountRequiresApproval ? 'Discount submitted for approval.' : 'Discount added.'));
+  };
+
+  const handleCreateOpeningBalance = async () => {
+    if (obAmount <= 0) { push('error', 'Enter an amount.'); return; }
+    const { error } = await createOpeningBalance({ balanceType: obType, amount: obAmount, remarks: obRemarks });
+    push(error ? 'error' : 'success', error ?? 'Opening balance recorded — pending approval.');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="card space-y-3 p-4">
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Assigned price lists</h3>
+          <div className="flex gap-2">
+            <select className="input" value={selectedListId} onChange={(e) => setSelectedListId(e.target.value)}>
+              <option value="">Select a price list…</option>
+              {priceLists.map((pl) => <option key={pl.id} value={pl.id}>{pl.name}</option>)}
+            </select>
+            <select className="input !w-32" value={assignmentType} onChange={(e) => setAssignmentType(e.target.value as any)}>
+              <option value="default">Default</option><option value="secondary">Secondary</option><option value="temporary">Temporary</option>
+            </select>
+            <button className="btn-primary shrink-0" onClick={handleAssignList}>Assign</button>
+          </div>
+          <div className="space-y-1">
+            {assignments.length === 0 ? <p className="text-sm text-slate-400">No price lists assigned — standard pricing applies.</p> : assignments.map((a) => (
+              <div key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800">
+                <span>{a.price_list?.name} <span className="badge-slate ml-1 capitalize">{a.assignment_type}</span></span>
+                <button onClick={() => remove(a.id)} className="text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card space-y-3 p-4">
+          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Customer-specific product prices</h3>
+          <div className="flex gap-2">
+            <select className="input" value={priceProductId} onChange={(e) => setPriceProductId(e.target.value)}>
+              <option value="">Select a product…</option>
+              {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            <input type="number" className="input !w-28" placeholder="Price" value={priceValue} onChange={(e) => setPriceValue(Number(e.target.value))} />
+            <button className="btn-primary shrink-0" onClick={handleAddPrice}>Set</button>
+          </div>
+          <div className="space-y-1">
+            {prices.length === 0 ? <p className="text-sm text-slate-400">No customer-specific prices set.</p> : prices.map((p) => (
+              <div key={p.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800">
+                <span>{p.product?.name}: {p.price.toFixed(2)}</span>
+                <button onClick={() => removePrice(p.id)} className="text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="card space-y-3 p-4">
+        <h3 className="font-semibold text-slate-800 dark:text-slate-100">Discounts</h3>
+        <div className="flex flex-wrap items-end gap-2">
+          <select className="input !w-40" value={discountType} onChange={(e) => setDiscountType(e.target.value as DiscountType)}>
+            <option value="percentage">Percentage</option><option value="fixed">Fixed</option><option value="product">Product</option>
+            <option value="category">Category</option><option value="invoice">Invoice</option>
+          </select>
+          <input type="number" className="input !w-28" placeholder="Value" value={discountValue} onChange={(e) => setDiscountValue(Number(e.target.value))} />
+          <label className="flex items-center gap-1 text-xs text-slate-500"><input type="checkbox" checked={discountRequiresApproval} onChange={(e) => setDiscountRequiresApproval(e.target.checked)} /> Requires approval</label>
+          <button className="btn-primary" onClick={handleAddDiscount}>Add discount</button>
+        </div>
+        <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+          <table className="table-base">
+            <thead><tr><th>Type</th><th>Value</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {discounts.length === 0 ? <tr><td colSpan={4} className="py-6 text-center text-slate-400">No discounts yet.</td></tr> : discounts.map((d) => (
+                <tr key={d.id}>
+                  <td className="capitalize">{d.discount_type}</td>
+                  <td>{d.discount_value}{d.discount_type === 'percentage' ? '%' : ''}</td>
+                  <td><span className={d.status === 'active' ? 'badge-green' : d.status === 'pending_approval' ? 'badge-amber' : 'badge-slate'}>{d.status.replace('_', ' ')}</span></td>
+                  <td>{d.status === 'active' && <button onClick={() => cancelDiscount(d.id)} className="text-slate-400 hover:text-red-600"><Trash2 size={14} /></button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card space-y-3 p-4">
+        <h3 className="font-semibold text-slate-800 dark:text-slate-100">Opening balance</h3>
+        {balance ? (
+          <div className="flex items-center justify-between rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
+            <span>{balance.balance_type === 'debit' ? 'Debit' : 'Credit'}: {balance.amount.toFixed(2)} — <span className={balance.status === 'approved' ? 'badge-green' : balance.status === 'rejected' ? 'badge-red' : 'badge-amber'}>{balance.status}</span></span>
+            {balance.status === 'pending' && (
+              <PermissionGate permission="customer_pricing:manage_opening_balances">
+                <div className="flex gap-2">
+                  <button className="btn-secondary !py-1" onClick={async () => { const { error } = await approveOB(); push(error ? 'error' : 'success', error ?? 'Approved and posted.'); }}>Approve</button>
+                  <button className="btn-danger !py-1" onClick={async () => { const { error } = await rejectOB('Rejected by user'); push(error ? 'error' : 'success', error ?? 'Rejected.'); }}>Reject</button>
+                </div>
+              </PermissionGate>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-end gap-2">
+            <select className="input !w-28" value={obType} onChange={(e) => setObType(e.target.value as 'debit' | 'credit')}>
+              <option value="debit">Debit</option><option value="credit">Credit</option>
+            </select>
+            <input type="number" className="input !w-32" placeholder="Amount" value={obAmount} onChange={(e) => setObAmount(Number(e.target.value))} />
+            <input className="input" placeholder="Remarks" value={obRemarks} onChange={(e) => setObRemarks(e.target.value)} />
+            <PermissionGate permission="customer_pricing:manage_opening_balances">
+              <button className="btn-primary" onClick={handleCreateOpeningBalance}>Record opening balance</button>
+            </PermissionGate>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="card p-4">
+          <h3 className="mb-2 font-semibold text-slate-800 dark:text-slate-100">Account summary</h3>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <p className="text-slate-500">Opening balance</p><p className="text-right font-medium">{summary?.opening_balance.toFixed(2) ?? '0.00'}</p>
+            <p className="text-slate-500">Current balance</p><p className="text-right font-medium">{summary?.current_balance.toFixed(2) ?? '0.00'}</p>
+          </div>
+        </div>
+        <div className="card p-4">
+          <h3 className="mb-2 font-semibold text-slate-800 dark:text-slate-100">Aging</h3>
+          <div className="space-y-1 text-sm">
+            {aging.map((a) => (
+              <div key={a.bucket_label} className="flex justify-between"><span className="text-slate-500">{a.bucket_label}</span><span className="font-medium">{a.amount.toFixed(2)}</span></div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700 dark:text-slate-300">Ledger</h3>
+        <div className="card overflow-hidden">
+          <table className="table-base">
+            <thead><tr><th>Date</th><th>Type</th><th>Debit</th><th>Credit</th><th>Balance</th><th>Description</th></tr></thead>
+            <tbody>
+              {transactions.length === 0 ? <tr><td colSpan={6} className="py-6 text-center text-slate-400">No ledger transactions yet.</td></tr> : transactions.map((t) => (
+                <tr key={t.id}>
+                  <td>{t.transaction_date}</td><td className="capitalize">{t.transaction_type.replace('_', ' ')}</td>
+                  <td>{t.debit > 0 ? t.debit.toFixed(2) : '—'}</td><td>{t.credit > 0 ? t.credit.toFixed(2) : '—'}</td>
+                  <td>{t.running_balance?.toFixed(2) ?? '—'}</td><td>{t.description ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CustomerProfilePage() {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
@@ -453,7 +646,7 @@ export function CustomerProfilePage() {
     { key: 'addresses', label: 'Addresses' }, { key: 'contacts', label: 'Contacts' },
     { key: 'assignments', label: 'Assignments' }, { key: 'notes', label: 'Notes' },
     { key: 'documents', label: 'Documents' }, { key: 'bank', label: 'Bank Details' },
-    { key: 'financial', label: 'Financial' }, { key: 'activity', label: 'Activity & Audit History' },
+    { key: 'financial', label: 'Financial' }, { key: 'pricing', label: 'Pricing & Ledger' }, { key: 'activity', label: 'Activity & Audit History' },
   ];
 
   return (
@@ -497,6 +690,7 @@ export function CustomerProfilePage() {
       {tab === 'documents' && <div className="card p-10 text-center text-sm text-slate-400">Documents — coming in Part 2.</div>}
       {tab === 'bank' && <div className="card p-10 text-center text-sm text-slate-400">Bank Details — coming in Part 2.</div>}
       {tab === 'financial' && <FinancialTab customerId={customer.id} />}
+      {tab === 'pricing' && <PricingTab customerId={customer.id} />}
       {tab === 'activity' && <ActivityAndAuditTab customerId={customer.id} />}
     </div>
   );
