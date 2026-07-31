@@ -35,6 +35,8 @@ import { VanDetailPage } from '@/pages/Van/VanDetailPage';
 import { VanStaffReportPage } from '@/pages/Van/VanStaffReportPage';
 import { VanUnloadingPage } from '@/pages/Van/VanUnloadingPage';
 import { SalesHomePage } from '@/pages/Sales/SalesHomePage';
+import { CustomerMasterPage } from '@/pages/Sales/CustomerMasterPage';
+import { CustomerProfilePage } from '@/pages/Sales/CustomerProfilePage';
 import { POSPage } from '@/pages/Sales/POSPage';
 import { SalesHistoryPage } from '@/pages/Sales/SalesHistoryPage';
 import { CollectionsPage } from '@/pages/Collections/CollectionsPage';
@@ -51,6 +53,7 @@ import { DeviceManagementPage } from '@/pages/Settings/DeviceManagementPage';
 import { PrintSettingsPage } from '@/pages/Settings/PrintSettingsPage';
 import { DeviceReportsPage } from '@/pages/Settings/DeviceReportsPage';
 import { SyncManagementPage } from '@/pages/Settings/SyncManagementPage';
+import { CustomerMasterSettingsPage } from '@/pages/Settings/CustomerMasterSettingsPage';
 import { GeofencesPage } from '@/pages/Gps/GeofencesPage';
 import { VehicleAlertsPage } from '@/pages/Gps/VehicleAlertsPage';
 import { StaffPage } from '@/pages/HR/StaffPage';
@@ -131,6 +134,9 @@ export default function App() {
             <Route path="van-loading/vans/:vanId" element={<VanDetailPage />} />
             <Route path="van-unloading" element={<VanUnloadingPage />} />
 
+            <Route path="customers" element={<CustomerMasterPage />} />
+            <Route path="customers/:customerId" element={<CustomerProfilePage />} />
+
             <Route path="sales" element={<SalesHomePage />}>
               <Route index element={<POSPage />} />
               <Route path="history" element={<SalesHistoryPage />} />
@@ -181,6 +187,7 @@ export default function App() {
               <Route path="print" element={<PrintSettingsPage />} />
               <Route path="device-reports" element={<DeviceReportsPage />} />
               <Route path="sync" element={<SyncManagementPage />} />
+              <Route path="customer-master" element={<CustomerMasterSettingsPage />} />
             </Route>
             </Route>
           </Route>

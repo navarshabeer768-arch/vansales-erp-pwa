@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, ShoppingCart, Truck, MapPin, Users, Boxes, Warehouse,
+  LayoutDashboard, ShoppingCart, Truck, MapPin, Users, Boxes, Warehouse, BookUser,
   ShoppingBag, Wallet, HandCoins, Undo2, Calculator, BarChart3, UserCog,
   Radar, Settings, X,
 } from 'lucide-react';
@@ -17,6 +17,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard, module: 'dashboard' },
+  { label: 'Customers', to: '/customers', icon: BookUser, module: 'customers' },
   { label: 'Sales', to: '/sales', icon: ShoppingCart, module: 'sales' },
   { label: 'Van Loading', to: '/van-loading', icon: Truck, module: 'van_loading' },
   { label: 'Van Unloading', to: '/van-unloading', icon: Truck, module: 'van_unloading' },

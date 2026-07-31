@@ -39,7 +39,7 @@ export interface Role {
 }
 
 export type ModuleName =
-  | 'dashboard' | 'sales' | 'van_loading' | 'van_unloading' | 'route_planning'
+  | 'dashboard' | 'sales' | 'customers' | 'van_loading' | 'van_unloading' | 'route_planning'
   | 'customer_visit' | 'inventory' | 'warehouse' | 'purchases' | 'payments'
   | 'collections' | 'returns' | 'accounting' | 'reports' | 'hr' | 'gps_tracking' | 'settings';
 

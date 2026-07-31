@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0034). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0035). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,82 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 4A.1 Part 1: Enterprise Customer Master
+
+This phase's own instructions required an analysis step before any code —
+inspecting existing customer tables, reusable components, and audit
+infrastructure, and explaining conflicts before implementing. That
+analysis is preserved in this project's conversation history; the
+short version: `customers`/`customer_groups`/`customer_contacts` already
+existed from Phase 1 but were thin (a single `address` text field, a
+hardcoded 7-value `customer_type` enum, a plain `is_active` boolean, no
+audit trail), and there was no dedicated Customer Master UI at all —
+only read-only dropdowns in POS/Returns/Routes/Geofences.
+
+- **One customer table, extended, not replaced.** Every new field the
+  doc asked for was added to the existing `customers` table rather than
+  creating a parallel one. The old `customer_type` enum and `is_active`
+  boolean are kept (the latter as a generated column derived from the
+  new `status` field) specifically so POS/Returns/Routes/Geofences kept
+  working unmodified.
+- **Configurable Types/Categories/Channels** (Settings → Customer
+  Master) — system defaults + per-company custom entries, mirroring the
+  `van_staff_roles` pattern from Phase 3B.1. No source code editing to
+  add a new customer type.
+- **Groups** (already existed) and **Tags**/**Territories** (new) — all
+  manageable from the same settings screen.
+- **Customer Addresses** — genuinely new (there was only one text
+  field before). Editing **never overwrites**: `replace_customer_address()`
+  supersedes the old row and inserts a new current version, so full
+  history is preserved as required.
+- **Customer Contacts** — extended in place with department, WhatsApp,
+  authorized-buyer/receiver/payment-contact flags, status, notes.
+- **Flexible employee assignments** — `customer_assignments` mirrors
+  `van_staff_assignments` exactly: any customer can have any number of
+  employees, any employee can hold any number of roles (salesman,
+  collector, supervisor, ...), nothing assumes they're different
+  people. Route/Van/Territory/Branch changes are tracked separately as
+  reassignment history (`customer_reassignment_history`), since a
+  customer normally has exactly one current route/van rather than
+  several at once — a different shape from the employee side, and
+  documented as a deliberate distinction, not an oversight.
+- **Status lifecycle with history** — draft/pending approval/active/
+  inactive/blocked/suspended/archived/deleted, every change logged to
+  `customer_status_history`.
+- **The first real, working audit-log trigger this codebase has ever
+  had.** `audit_logs` existed since Phase 1 but nothing had ever written
+  to it — a schema stub, not working infrastructure. `log_audit_change()`
+  is generic and now backs customers, addresses, contacts, and
+  assignments, reusable for any future table with one line.
+- **Soft duplicate detection** — warns on matching phone/WhatsApp/email,
+  save-anyway requires a permission, exactly as specified (a hard
+  database constraint would make override impossible).
+- **Customer Master list** (Customers in the sidebar) — search across
+  code/name/phone/WhatsApp/email/route/area/employee, filters for every
+  dimension the doc listed, table and card views, bulk activate/
+  deactivate.
+- **Customer Profile** — tabbed: Overview, General Information,
+  Addresses, Contacts, Assignments, Notes, Activity & Audit History are
+  fully real. **Documents, Bank Details, and Financial are placeholder
+  tabs exactly as the doc specified** ("placeholder for Part 2") — not
+  built out, and not faked with mock data.
+
+**Honestly thinner than the full spec, stated rather than hidden:**
+- Only two views were built (table, card) — no distinct "compact
+  mobile view" as a third layout; the card view is responsive and
+  usable on a phone, but that's not the same as a purpose-built compact
+  layout.
+- Bulk actions cover Activate/Deactivate; Assign Route/Van/Employee,
+  Change Category/Group/Tags, and bulk Export/Print from the selection
+  toolbar were not built — the toolbar is there, wired for the two that
+  are.
+- No column selector or saved filters.
+- No print action for the customer list/profile yet.
+- **Offline customer viewing for assigned routes and offline draft
+  creation were not built in this pass.** The offline queue (Phase
+  3B.3) currently covers Sales/Collections/Returns; extending it to
+  customer master data is real, additional work, not a small addition.
 
 ## Phase 3B.3: PDT Device Support, Scanning, Printing, Offline & Sync
 

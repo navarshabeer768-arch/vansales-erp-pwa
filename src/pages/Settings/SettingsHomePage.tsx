@@ -15,6 +15,7 @@ export function SettingsHomePage() {
     { to: '/settings/print', label: 'Print Settings', end: false, show: can('settings:edit') },
     { to: '/settings/device-reports', label: 'Device & Sync Reports', end: false, show: can('devices:manage') },
     { to: '/settings/sync', label: 'Sync Management', end: false, show: true },
+    { to: '/settings/customer-master', label: 'Customer Master', end: false, show: can('settings:edit') },
   ].filter((t) => t.show);
 
   return (
