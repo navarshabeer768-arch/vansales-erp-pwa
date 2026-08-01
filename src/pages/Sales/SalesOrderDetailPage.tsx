@@ -10,6 +10,7 @@ import { useOrderStockValidation, useOrderStockReservations } from '@/hooks/useO
 import { useOrderCreditValidation, useOrderCreditReservation, useOrderCreditOverrides } from '@/hooks/useOrderCredit';
 import { useOrderApprovals } from '@/hooks/useOrderApprovals';
 import { useOrderHold, useOrderBackorders, useOrderCancellation, useOrderAmendments } from '@/hooks/useOrderControl';
+import { supabase } from '@/lib/supabase';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -46,7 +47,7 @@ export function SalesOrderDetailPage() {
   const { requests: creditOverrides, requestOverride } = useOrderCreditOverrides(orderId);
   const { steps: approvalSteps, overallStatus: approvalOverallStatus, processAction } = useOrderApprovals(orderId);
   const { history: holdHistory, placeOnHold, releaseHold } = useOrderHold(orderId);
-  const { backorders } = useOrderBackorders(orderId);
+  const { backorders, reload: reloadBackorders } = useOrderBackorders(orderId);
   const { cancelOrder: cancelOrderFull } = useOrderCancellation();
   const { amendments, createAmendment, approveAmendment } = useOrderAmendments(orderId);
 
@@ -91,6 +92,26 @@ export function SalesOrderDetailPage() {
     const { error } = await addNote(newNote.trim());
     if (error) { push('error', error); return; }
     setNewNote('');
+  };
+
+  const handleCheckBackorderAvailability = async (backorder: { id: string; order_item_id: string; product_id: string; backorder_quantity: number }) => {
+    const { data, error } = await supabase.rpc('check_backorder_availability', { p_product_id: backorder.product_id });
+    if (error) { push('error', error.message); return; }
+    const match = ((data ?? []) as any[]).find((r) => r.backorder_id === backorder.id);
+    if (!match) { push('error', 'No availability data returned for this backorder.'); return; }
+    if (!match.can_fulfil) {
+      push('error', `Only ${match.available_quantity} available — ${backorder.backorder_quantity} needed. Not enough stock yet.`);
+      return;
+    }
+    if (!confirm(`${match.available_quantity} available — enough to fulfil this backorder. Reserve stock now?`)) return;
+
+    const { data: reservationId, error: reserveError } = await reserveItem(backorder.order_item_id);
+    if (reserveError) { push('error', reserveError); return; }
+    if (reservationId) {
+      await supabase.rpc('update_backorder_status', { p_backorder_id: backorder.id, p_new_status: 'allocated', p_quantity_allocated: backorder.backorder_quantity, p_reason: 'Stock became available' });
+    }
+    push('success', 'Stock reserved and backorder marked allocated.');
+    reloadBackorders();
   };
 
   return (
@@ -308,7 +329,7 @@ export function SalesOrderDetailPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-700">
-                      <th className="p-3">Product</th><th className="p-3">Backorder Qty</th><th className="p-3">Priority</th><th className="p-3">Status</th>
+                      <th className="p-3">Product</th><th className="p-3">Backorder Qty</th><th className="p-3">Priority</th><th className="p-3">Status</th><th className="p-3"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -318,6 +339,15 @@ export function SalesOrderDetailPage() {
                         <td className="p-3">{b.backorder_quantity}</td>
                         <td className="p-3 capitalize">{b.priority}</td>
                         <td className="p-3 capitalize">{b.status.replace(/_/g, ' ')}</td>
+                        <td className="p-3 text-right">
+                          {['pending', 'waiting_for_stock', 'partially_available'].includes(b.status) && (
+                            <PermissionGate permission="sales_orders:manage_backorders">
+                              <button className="text-xs text-blue-600 hover:underline" onClick={() => handleCheckBackorderAvailability(b)}>
+                                Check Availability &amp; Allocate
+                              </button>
+                            </PermissionGate>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

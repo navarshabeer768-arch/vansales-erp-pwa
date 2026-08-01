@@ -583,6 +583,25 @@ str_replace matching on `)}\n\n{tab === 'notes' && (` consumed the
 meant to leave alone; verified via `grep` after each tab insertion from
 then on and caught both occurrences before they shipped.
 
+**Second follow-up pass** (same day): expanded `OrderControlReportsPage`
+from 6 to 11 of the 26 named reports (added Credit Reservation, Credit
+Override, Price Override, Discount Override, Order Hold), and added a
+"Check Availability & Allocate" action on the Stock tab's backorder list
+— calls the existing `check_backorder_availability()`, and if enough
+stock now exists, reserves it via `create_stock_reservation()` and marks
+the backorder allocated, rather than leaving it display-only. Caught a
+couple of str_replace slips again while editing (a variable assignment
+and an error-type mismatch), both caught by the typecheck before commit
+this time rather than needing a manual grep pass.
+
+Remaining: 15 of 26 reports (Reservation Expiry, Batch/Serial
+Reservation, Partially Reserved/Unreserved Approved Order, Backorder
+Aging, Stock Transfer Request, Approval Turnaround, Partial Approval,
+Free Quantity Approval, Order Amendment, Partial Cancellation, Order
+Expiry, Offline Order Validation, Order Conflict, Order Conversion
+Status), manual serial/batch override picker, and a proper (non-prompt)
+amendment form.
+
 ## Phase 5A.2 Part 1: Sales Order Entry, Pricing, Discounts, Mobile & PDT Order Entry
 
 Followed this phase's own "inspect before implementing" instruction.
