@@ -9,6 +9,7 @@ export interface SalesOrderDetail {
   is_manual_number: boolean;
   order_date: string;
   expected_delivery_date: string | null;
+  payment_type: string | null;
   status: SalesOrderStatus;
   customer_reference: string | null;
   customer_po: string | null;

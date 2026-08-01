@@ -11,6 +11,7 @@ import { useOrderCreditValidation, useOrderCreditReservation, useOrderCreditOver
 import { useOrderApprovals } from '@/hooks/useOrderApprovals';
 import { useOrderHold, useOrderBackorders, useOrderCancellation, useOrderAmendments } from '@/hooks/useOrderControl';
 import { supabase } from '@/lib/supabase';
+import { Modal } from '@/components/ui/Modal';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -29,6 +30,147 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'visit', label: 'Visit', icon: MapPin },
   { key: 'audit', label: 'Audit History', icon: HistoryIcon },
 ];
+
+interface AmendableItem {
+  id: string;
+  ordered_quantity: number;
+  product?: { name: string } | null;
+  description: string | null;
+}
+
+interface ItemChangeDraft {
+  itemId: string;
+  action: 'none' | 'reduce_quantity' | 'remove_item';
+  newQuantity: string;
+}
+
+function AmendOrderModal({ open, onClose, items, currentDeliveryDate, currentPaymentType, onSubmit }: {
+  open: boolean;
+  onClose: () => void;
+  items: AmendableItem[];
+  currentDeliveryDate: string | null;
+  currentPaymentType: string | null;
+  onSubmit: (reason: string, changes: any[]) => Promise<{ error?: string }>;
+}) {
+  const { push } = useToast();
+  const [reason, setReason] = useState('');
+  const [itemDrafts, setItemDrafts] = useState<Record<string, ItemChangeDraft>>({});
+  const [changeDeliveryDate, setChangeDeliveryDate] = useState(false);
+  const [newDeliveryDate, setNewDeliveryDate] = useState(currentDeliveryDate ?? '');
+  const [changePaymentType, setChangePaymentType] = useState(false);
+  const [newPaymentType, setNewPaymentType] = useState(currentPaymentType ?? 'cash');
+  const [submitting, setSubmitting] = useState(false);
+
+  const setItemAction = (itemId: string, action: ItemChangeDraft['action'], currentQty: number) => {
+    setItemDrafts((prev) => ({ ...prev, [itemId]: { itemId, action, newQuantity: prev[itemId]?.newQuantity ?? String(currentQty) } }));
+  };
+
+  const setItemQuantity = (itemId: string, quantity: string) => {
+    setItemDrafts((prev) => ({ ...prev, [itemId]: { ...prev[itemId], newQuantity: quantity } }));
+  };
+
+  const handleSubmit = async () => {
+    if (!reason.trim()) { push('error', 'A reason is required for every amendment.'); return; }
+
+    const changes: any[] = [];
+    for (const item of items) {
+      const draft = itemDrafts[item.id];
+      if (!draft || draft.action === 'none') continue;
+      if (draft.action === 'remove_item') {
+        changes.push({ order_item_id: item.id, change_type: 'remove_item', old_value: { quantity: item.ordered_quantity }, new_value: { quantity: 0 } });
+      } else {
+        const newQty = Number(draft.newQuantity);
+        if (!newQty || newQty <= 0 || newQty >= item.ordered_quantity) {
+          push('error', `New quantity for "${item.product?.name ?? item.description}" must be a positive number less than the current quantity.`);
+          return;
+        }
+        changes.push({ order_item_id: item.id, change_type: 'reduce_quantity', old_value: { quantity: item.ordered_quantity }, new_value: { quantity: newQty } });
+      }
+    }
+    if (changeDeliveryDate && newDeliveryDate) {
+      changes.push({ order_item_id: null, change_type: 'change_delivery_date', old_value: { expected_delivery_date: currentDeliveryDate }, new_value: { expected_delivery_date: newDeliveryDate } });
+    }
+    if (changePaymentType && newPaymentType !== currentPaymentType) {
+      changes.push({ order_item_id: null, change_type: 'change_payment_type', old_value: { payment_type: currentPaymentType }, new_value: { payment_type: newPaymentType } });
+    }
+
+    if (changes.length === 0) { push('error', 'No changes selected.'); return; }
+
+    setSubmitting(true);
+    const { error } = await onSubmit(reason.trim(), changes);
+    setSubmitting(false);
+    if (error) { push('error', error); return; }
+    push('success', 'Amendment created — pending approval.');
+    setReason(''); setItemDrafts({}); setChangeDeliveryDate(false); setChangePaymentType(false);
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="New Amendment" size="lg">
+      <div className="space-y-4">
+        <div>
+          <h4 className="mb-2 text-sm font-semibold">Items</h4>
+          <div className="space-y-2">
+            {items.map((item) => {
+              const draft = itemDrafts[item.id];
+              return (
+                <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 p-2 text-sm dark:border-slate-800">
+                  <span className="min-w-[160px] flex-1">{item.product?.name ?? item.description} <span className="text-xs text-slate-400">(qty {item.ordered_quantity})</span></span>
+                  <select
+                    className="input !w-auto"
+                    value={draft?.action ?? 'none'}
+                    onChange={(e) => setItemAction(item.id, e.target.value as ItemChangeDraft['action'], item.ordered_quantity)}
+                  >
+                    <option value="none">No change</option>
+                    <option value="reduce_quantity">Reduce quantity</option>
+                    <option value="remove_item">Remove item</option>
+                  </select>
+                  {draft?.action === 'reduce_quantity' && (
+                    <input
+                      type="number" className="input !w-24" placeholder="New qty" min={0} max={item.ordered_quantity - 1}
+                      value={draft.newQuantity} onChange={(e) => setItemQuantity(item.id, e.target.value)}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="amend-delivery-date" checked={changeDeliveryDate} onChange={(e) => setChangeDeliveryDate(e.target.checked)} />
+          <label htmlFor="amend-delivery-date" className="text-sm">Change delivery date</label>
+          {changeDeliveryDate && (
+            <input type="date" className="input !w-auto" value={newDeliveryDate} onChange={(e) => setNewDeliveryDate(e.target.value)} />
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input type="checkbox" id="amend-payment-type" checked={changePaymentType} onChange={(e) => setChangePaymentType(e.target.checked)} />
+          <label htmlFor="amend-payment-type" className="text-sm">Change payment type</label>
+          {changePaymentType && (
+            <select className="input !w-auto" value={newPaymentType} onChange={(e) => setNewPaymentType(e.target.value)}>
+              <option value="cash">Cash</option>
+              <option value="credit">Credit</option>
+            </select>
+          )}
+        </div>
+
+        <div>
+          <label className="label">Reason *</label>
+          <textarea className="input" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why is this amendment needed?" />
+        </div>
+      </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button className="btn-secondary" onClick={onClose} disabled={submitting}>Cancel</button>
+        <button className="btn-primary" onClick={handleSubmit} disabled={submitting}>
+          {submitting ? 'Submitting…' : 'Submit Amendment'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
 
 export function SalesOrderDetailPage() {
   const { orderId } = useParams();
@@ -50,6 +192,7 @@ export function SalesOrderDetailPage() {
   const { backorders, reload: reloadBackorders } = useOrderBackorders(orderId);
   const { cancelOrder: cancelOrderFull } = useOrderCancellation();
   const { amendments, createAmendment, approveAmendment } = useOrderAmendments(orderId);
+  const [amendModalOpen, setAmendModalOpen] = useState(false);
 
   if (loading || !order) return <p className="text-center text-slate-400">Loading…</p>;
 
@@ -460,29 +603,7 @@ export function SalesOrderDetailPage() {
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Amendments</h3>
             <PermissionGate permission="sales_orders:create_amendment">
-              <button className="btn-secondary" onClick={async () => {
-                const itemLabel = items.map((i, idx) => `${idx + 1}. ${i.product?.name ?? i.description} (qty ${i.ordered_quantity})`).join('\n');
-                const choice = prompt(`Which item? Enter its number:\n${itemLabel}`);
-                if (!choice) return;
-                const idx = Number(choice) - 1;
-                const item = items[idx];
-                if (!item) { push('error', 'Invalid item number.'); return; }
-                const action = prompt('Type "reduce" to reduce quantity or "remove" to remove the item entirely:', 'reduce');
-                if (!action) return;
-                const reason = prompt('Reason for this amendment:');
-                if (!reason) return;
-                let change: any;
-                if (action === 'remove') {
-                  change = { order_item_id: item.id, change_type: 'remove_item', old_value: { quantity: item.ordered_quantity }, new_value: { quantity: 0 } };
-                } else {
-                  const newQtyStr = prompt(`New quantity (currently ${item.ordered_quantity}):`);
-                  if (!newQtyStr) return;
-                  change = { order_item_id: item.id, change_type: 'reduce_quantity', old_value: { quantity: item.ordered_quantity }, new_value: { quantity: Number(newQtyStr) } };
-                }
-                const { error } = await createAmendment(reason, [change]);
-                if (error) { push('error', error); return; }
-                push('success', 'Amendment created — pending approval.');
-              }}>New Amendment</button>
+              <button className="btn-secondary" onClick={() => setAmendModalOpen(true)}>New Amendment</button>
             </PermissionGate>
           </div>
           <div className="space-y-2">
@@ -559,6 +680,15 @@ export function SalesOrderDetailPage() {
           {history.length === 0 && <p className="text-sm text-slate-500">No status changes yet.</p>}
         </div>
       )}
+
+      <AmendOrderModal
+        open={amendModalOpen}
+        onClose={() => setAmendModalOpen(false)}
+        items={items}
+        currentDeliveryDate={order.expected_delivery_date}
+        currentPaymentType={order.payment_type ?? null}
+        onSubmit={(reason, changes) => createAmendment(reason, changes)}
+      />
     </div>
   );
 }

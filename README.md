@@ -594,13 +594,17 @@ couple of str_replace slips again while editing (a variable assignment
 and an error-type mismatch), both caught by the typecheck before commit
 this time rather than needing a manual grep pass.
 
-Remaining: 15 of 26 reports (Reservation Expiry, Batch/Serial
-Reservation, Partially Reserved/Unreserved Approved Order, Backorder
-Aging, Stock Transfer Request, Approval Turnaround, Partial Approval,
-Free Quantity Approval, Order Amendment, Partial Cancellation, Order
-Expiry, Offline Order Validation, Order Conflict, Order Conversion
-Status), manual serial/batch override picker, and a proper (non-prompt)
-amendment form.
+**Third follow-up pass** (same day): replaced the prompt-based amendment
+flow with a proper `AmendOrderModal` — per-item dropdowns to reduce
+quantity or remove entirely (validated so a "reduced" quantity can't be
+zero or exceed the current amount), toggleable delivery-date and
+payment-type changes, a required reason field, building the same
+`changes` JSON payload the `create_order_amendment()` RPC always
+expected, just from real form controls instead of a sequence of
+`prompt()` calls.
+
+Remaining: 15 of 26 reports, and no manual serial/batch override picker
+(the permission and data model support it; there's still no UI).
 
 ## Phase 5A.2 Part 1: Sales Order Entry, Pricing, Discounts, Mobile & PDT Order Entry
 
