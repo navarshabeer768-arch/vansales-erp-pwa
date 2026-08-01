@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, ClipboardList, Tag, Calculator, StickyNote, History as HistoryIcon, XCircle } from 'lucide-react';
+import { ArrowLeft, Send, ClipboardList, Tag, Calculator, StickyNote, History as HistoryIcon, XCircle, Percent } from 'lucide-react';
 import { useSalesInvoiceDetail, useSalesInvoiceNotes, useSalesInvoiceStatusHistory } from '@/hooks/useSalesInvoiceDetail';
 import { useSalesInvoices } from '@/hooks/useSalesInvoices';
+import { useInvoiceRequests } from '@/hooks/useInvoiceRequests';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
-type Tab = 'overview' | 'items' | 'pricing' | 'totals' | 'notes' | 'audit';
+type Tab = 'overview' | 'items' | 'pricing' | 'totals' | 'requests' | 'notes' | 'audit';
 
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'overview', label: 'Overview', icon: ClipboardList },
   { key: 'items', label: 'Items', icon: Tag },
   { key: 'pricing', label: 'Pricing', icon: Tag },
   { key: 'totals', label: 'Totals', icon: Calculator },
+  { key: 'requests', label: 'Requests', icon: Percent },
   { key: 'notes', label: 'Notes', icon: StickyNote },
   { key: 'audit', label: 'Audit History', icon: HistoryIcon },
 ];
@@ -25,6 +27,10 @@ export function SalesInvoiceDetailPage() {
   const { notes, addNote } = useSalesInvoiceNotes(invoiceId);
   const { history } = useSalesInvoiceStatusHistory(invoiceId);
   const { submitInvoice, cancelInvoice } = useSalesInvoices();
+  const {
+    priceRequests, discountRequests, freeQuantityRequests,
+    requestPriceOverride, requestDiscountOverride, requestManualFreeQuantity,
+  } = useInvoiceRequests(invoiceId);
   const { push } = useToast();
   const [newNote, setNewNote] = useState('');
 
@@ -169,6 +175,107 @@ export function SalesInvoiceDetailPage() {
           <div><p className="label">Total Quantity</p><p className="font-medium">{invoice.total_quantity}</p></div>
           <div><p className="label">Free Quantity</p><p className="font-medium">{invoice.total_free_quantity}</p></div>
           <div className="col-span-2 sm:col-span-4"><p className="label">Net Amount</p><p className="text-lg font-bold">{invoice.net_amount.toFixed(2)}</p></div>
+        </div>
+      )}
+
+      {tab === 'requests' && (
+        <div className="space-y-6">
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="font-semibold">Price Override Requests</h3>
+              <PermissionGate permission="sales_invoices:request_price_override">
+                <button className="text-xs text-blue-600 hover:underline" onClick={async () => {
+                  const itemLabel = items.map((i, idx) => `${idx + 1}. ${i.product?.name ?? i.description} (current price ${i.applied_price})`).join('\n');
+                  const choice = prompt(`Which item? Enter its number:\n${itemLabel}`);
+                  if (!choice) return;
+                  const item = items[Number(choice) - 1];
+                  if (!item) { push('error', 'Invalid item number.'); return; }
+                  const requestedPrice = prompt('Requested price:');
+                  if (!requestedPrice) return;
+                  const reason = prompt('Reason for this price request:');
+                  if (!reason) return;
+                  const { error } = await requestPriceOverride(item.id, Number(requestedPrice), reason);
+                  if (error) push('error', error); else push('success', 'Price override requested.');
+                }}>Request Price Override</button>
+              </PermissionGate>
+            </div>
+            <div className="space-y-2">
+              {priceRequests.map((r) => (
+                <div key={r.id} className="card p-3 text-sm">
+                  <p>Original {r.original_price} → Requested {r.requested_price} · <span className="capitalize">{r.status}</span></p>
+                  <p className="text-slate-500">{r.reason}</p>
+                  <p className="text-xs text-slate-400">{new Date(r.request_time).toLocaleString()}</p>
+                </div>
+              ))}
+              {priceRequests.length === 0 && <p className="text-sm text-slate-500">No price requests yet.</p>}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="font-semibold">Discount Override Requests</h3>
+              <PermissionGate permission="sales_invoices:request_discount_override">
+                <button className="text-xs text-blue-600 hover:underline" onClick={async () => {
+                  const itemLabel = items.map((i, idx) => `${idx + 1}. ${i.product?.name ?? i.description} (current discount ${i.discount_pct}%)`).join('\n');
+                  const choice = prompt(`Which item? Enter its number:\n${itemLabel}`);
+                  if (!choice) return;
+                  const item = items[Number(choice) - 1];
+                  if (!item) { push('error', 'Invalid item number.'); return; }
+                  const requestedPct = prompt('Requested discount %:');
+                  if (!requestedPct) return;
+                  const allowedPct = prompt('Allowed discount % (from pricing rules):', String(item.discount_pct));
+                  if (!allowedPct) return;
+                  const reason = prompt('Reason for this discount request:');
+                  if (!reason) return;
+                  const { error } = await requestDiscountOverride(item.id, Number(requestedPct), Number(allowedPct), reason);
+                  if (error) push('error', error); else push('success', 'Discount override requested.');
+                }}>Request Discount Override</button>
+              </PermissionGate>
+            </div>
+            <div className="space-y-2">
+              {discountRequests.map((r) => (
+                <div key={r.id} className="card p-3 text-sm">
+                  <p>Requested {r.requested_discount_pct}% (allowed {r.allowed_discount_pct}%) · <span className="capitalize">{r.status}</span></p>
+                  <p className="text-slate-500">{r.reason}</p>
+                  <p className="text-xs text-slate-400">{new Date(r.request_time).toLocaleString()}</p>
+                </div>
+              ))}
+              {discountRequests.length === 0 && <p className="text-sm text-slate-500">No discount requests yet.</p>}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="font-semibold">Manual Free Quantity Requests</h3>
+              <PermissionGate permission="sales_invoices:request_manual_free_quantity">
+                <button className="text-xs text-blue-600 hover:underline" onClick={async () => {
+                  const itemLabel = items.map((i, idx) => `${idx + 1}. ${i.product?.name ?? i.description}`).join('\n');
+                  const choice = prompt(`Which item is this free quantity for? Enter its number:\n${itemLabel}`);
+                  if (!choice) return;
+                  const item = items[Number(choice) - 1];
+                  if (!item) { push('error', 'Invalid item number.'); return; }
+                  const requestedQty = prompt('Total requested free quantity:');
+                  if (!requestedQty) return;
+                  const schemeQty = prompt('Scheme-qualified free quantity (0 if none):', '0');
+                  if (schemeQty === null) return;
+                  const reason = prompt('Reason for the additional free quantity:');
+                  if (!reason) return;
+                  const { error } = await requestManualFreeQuantity(item.id, item.product_id, Number(requestedQty), Number(schemeQty), reason);
+                  if (error) push('error', error); else push('success', 'Manual free quantity requested.');
+                }}>Request Manual Free Quantity</button>
+              </PermissionGate>
+            </div>
+            <div className="space-y-2">
+              {freeQuantityRequests.map((r) => (
+                <div key={r.id} className="card p-3 text-sm">
+                  <p>Requested {r.requested_free_quantity} (scheme {r.scheme_free_quantity}, manual {r.additional_free_quantity}) · <span className="capitalize">{r.status}</span></p>
+                  <p className="text-slate-500">{r.reason}</p>
+                  <p className="text-xs text-slate-400">{new Date(r.request_time).toLocaleString()}</p>
+                </div>
+              ))}
+              {freeQuantityRequests.length === 0 && <p className="text-sm text-slate-500">No free quantity requests yet.</p>}
+            </div>
+          </div>
         </div>
       )}
 

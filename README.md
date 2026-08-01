@@ -551,11 +551,22 @@ Conversion Draft, Direct Invoice Draft, Employee Draft, Van Draft), each
 explicitly labeled as draft/unposted data, never mixed with the
 finalized `sales` table.
 
+**Second follow-up pass** (same day): added a "Requests" tab to
+`SalesInvoiceDetailPage` — prompt-based (matching the same pragmatic
+pattern used for Sales Order amendments) flows to request a price
+override, discount override, or manual free quantity per item, each
+listing its own request history with status. Wired to the `*_notified()`
+variants from the previous pass, so creating a request now also fires
+its named notification. This time inserted the new tab with the exact
+surrounding text verified via `grep` beforehand — a str_replace mistake
+on this same tab-insertion pattern bit me twice earlier in this phase,
+so checked the boundary text precisely before editing rather than after.
+
 Remaining: 10 of 15 reports (Cash/Credit/Hybrid Invoice Draft, Invoice
-Item Draft, Route Draft Invoice, Offline Draft Invoice, Price/Discount
-Request, Promotion Application, Tax Calculation Preview), PDT-specific
-optimizations, Card/Mobile invoice list views, override-request UI, and
-a side-by-side multi-invoice-from-order view.
+Item Draft, Route Draft Invoice, Offline Draft Invoice, Promotion
+Application, Tax Calculation Preview), PDT-specific optimizations,
+Card/Mobile invoice list views, and a side-by-side multi-invoice-from-
+order view.
 
 ## Phase 5A.2 Part 2: Stock Reservation, Credit Control, Order Approvals, Backorders, Amendments, Cancellation, Offline Revalidation
 
