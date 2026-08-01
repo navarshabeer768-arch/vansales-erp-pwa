@@ -66,7 +66,7 @@ export function useCreateSalesInvoice() {
   const submit = useCallback(async (params: CreateInvoiceParams) => {
     setSubmitting(true);
     const clientUuid = genClientUuid();
-    const { data, error } = await supabase.rpc('create_sales_invoice', {
+    const { data, error } = await supabase.rpc('create_sales_invoice_notified', {
       p_invoice_type_code: params.invoiceTypeCode,
       p_items: params.items.map((i) => ({
         product_id: i.product_id, variant_id: i.variant_id ?? null, unit_id: i.unit_id ?? null, batch_id: i.batch_id ?? null,

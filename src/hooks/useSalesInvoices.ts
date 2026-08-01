@@ -66,7 +66,7 @@ export function useSalesInvoices(filters: SalesInvoiceFilters = {}) {
   useEffect(() => { load(); }, [load]);
 
   const submitInvoice = useCallback(async (invoiceId: string) => {
-    const { error } = await supabase.rpc('change_sales_invoice_status', { p_invoice_id: invoiceId, p_new_status: 'submitted' });
+    const { error } = await supabase.rpc('change_sales_invoice_status_notified', { p_invoice_id: invoiceId, p_new_status: 'submitted' });
     if (error) return { error: error.message };
     await load();
     return { data: true };

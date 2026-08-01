@@ -541,18 +541,21 @@ page — shows ordered/converted/cancelled/remaining per item with a
 "Use Remaining" shortcut, so partial conversion is a real, informed
 choice rather than a guess.
 
-**Honest gaps**:
-- No dedicated Reports UI for the 15 named draft reports.
-- No notifications wired up for this phase's 10 named triggers.
-- PDT-specific optimizations (large touch targets, numeric keypad, quick-
-  quantity buttons) aren't built — the entry page is mobile-responsive
-  but not PDT-specialized, same gap noted for Sales Order Entry.
-- No Card/Mobile/POS list views on the invoice list — Table view only.
-- No dedicated UI for price/discount/free-quantity override *requests*
-  on invoices (the RPCs and tables exist; nothing surfaces them yet).
-- No manual multi-invoice-from-one-order UI beyond running the
-  conversion modal twice — there's no single screen showing "2 of 3
-  invoices created from this order" side by side.
+**Follow-up pass** (same day): wired notifications for all 10 named
+triggers (`notify_invoice_event()` + `*_notified()` wrapper functions
+around `create_sales_invoice`, `change_sales_invoice_status`, the three
+override-request functions, sync failure, and conflict detection — the
+client hooks now call the notified variants). Added `InvoiceReportsPage`
+covering 5 of the 15 named reports (Invoice Draft Register, Order
+Conversion Draft, Direct Invoice Draft, Employee Draft, Van Draft), each
+explicitly labeled as draft/unposted data, never mixed with the
+finalized `sales` table.
+
+Remaining: 10 of 15 reports (Cash/Credit/Hybrid Invoice Draft, Invoice
+Item Draft, Route Draft Invoice, Offline Draft Invoice, Price/Discount
+Request, Promotion Application, Tax Calculation Preview), PDT-specific
+optimizations, Card/Mobile invoice list views, override-request UI, and
+a side-by-side multi-invoice-from-order view.
 
 ## Phase 5A.2 Part 2: Stock Reservation, Credit Control, Order Approvals, Backorders, Amendments, Cancellation, Offline Revalidation
 
