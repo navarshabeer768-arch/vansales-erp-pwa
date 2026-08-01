@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0046). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0057). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,94 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 5A.2 Part 2: Stock Reservation, Credit Control, Order Approvals, Backorders, Amendments, Cancellation, Offline Revalidation
+
+The largest phase in this build by line count (11 migrations, ~2,600 lines
+of SQL) — full order-control lifecycle on top of Part 1's order entry.
+Followed the doc's "inspect before implementing" instruction; real
+findings from that inspection:
+
+- **`warehouse_stock.reserved_quantity`** already existed as a column but
+  **nothing wrote to it** — only `allocate_stock_fifo()` (0025) read it.
+  Same dormant-field pattern caught in earlier phases (`wholesale_price`,
+  `free_quantity_rules`). Now it's actually maintained by the new
+  reservation functions. `van_stock` had no such column at all — added it.
+- **`allocate_stock_fifo()`** (0025) is a real FIFO/expiry-priority
+  allocator already used by Van Loading/POS — reused rather than
+  duplicated, but inspection surfaced two real bugs fixed here: it never
+  excluded already-expired batches (an expired batch would be allocated
+  *first*, not skipped), and it hard-raised an exception on any shortfall
+  instead of supporting the "Partial Stock Handling" this phase requires.
+  Added explicit FIFO-vs-FEFO selection and a minimum-remaining-shelf-life
+  parameter. A compatibility wrapper under the original signature keeps
+  Van Loading/POS working unchanged.
+- **`customer_available_credit()`** (4A.2 Part 1) had carried two
+  hardcoded-to-zero variables since it was written — `v_pending_orders`
+  and `v_reserved_credit` — with a comment reading "reserved for when one
+  exists." Both now compute from real `sales_orders`/
+  `sales_order_credit_reservations` data.
+- **A foundational gap caught mid-build**: partway through writing the
+  approval workflow, realized Part 1's `sales_orders.status` CHECK
+  constraint and its transition table only covered the 7-state Part 1
+  model — the approval/hold/reservation code already being written used
+  statuses (`approved`, `pending_approval`, `rejected`, ...) that
+  constraint would have rejected outright. Stopped and extended the
+  constraint and transition table to the full Part 2 status set
+  (migration 0053) before continuing, rather than shipping code that
+  would fail its first real write.
+- Two more bugs caught and fixed before they shipped: `check_backorder_availability()`
+  originally referenced a `customers.priority` column that doesn't
+  exist; `reopen_expired_order()` originally called the totals-recalculation
+  function *before* clearing old order items, which would have left the
+  order with either duplicated or zeroed-out lines depending on call order.
+
+**Database** (migrations 0047–0057): all 26 tables named in the
+requirements doc — stock validation/reservation (with batch and serial
+breakdown as children of a reservation header, not a competing
+allocation concept), backorders + stock transfer requests (linked to
+the existing `warehouse_transfers`/`van_transfers` tables, not a new
+transfer engine), credit validation/reservation/override (with
+separation-of-duties enforcement), a multi-level order approval workflow
+(trigger evaluation from real order/item data, sequential steps, partial
+approval that can only reduce quantities/discounts, never increase
+them), price/discount/free-quantity override requests, order hold/release,
+approved-order amendments (JSON version snapshots, never overwriting
+history), full and partial cancellation (atomically releasing every
+active stock and credit reservation), order expiry/reopen, a conversion
+foundation (tracking fields only — no invoice is created this phase),
+offline revalidation after sync (reruns customer/product/pricing/stock/credit
+checks against current server state, never trusts cached offline values),
+sync conflict detection and resolution, a 34-action permission module,
+audit triggers on every new table, `dashboard_stats()` extended with 20
+real Part 2 KPI fields, and notifications wired through the existing
+`notifications` table.
+
+**Client**: `SalesOrderDetailPage` extended with three new tabs (Stock,
+Credit, Approvals) showing live validation results, reservations, credit
+overrides, and approval steps with inline approve/reject/return-for-correction
+actions; Hold and Cancel buttons wired to the real Part 2 functions
+(cancellation now properly releases every reservation rather than just
+flipping a status flag); a new `ApprovalQueuePage` giving supervisors one
+place to see every pending approval step across the company.
+
+**Honest gaps**:
+- No dedicated Reports UI for this phase — the 26 named reports have
+  real underlying data (validations, reservations, overrides, approvals,
+  amendments, cancellations) but no report pages were built.
+- No sync-conflict resolution UI — `resolve_sync_conflict()` and its
+  hook exist, but there's no page surfacing open conflicts yet.
+- No amendment-creation UI — `create_order_amendment()`/`approve_order_amendment()`
+  and their hook exist, but there's no form to build the changes JSON
+  from the UI; amendments can currently only be driven via direct RPC calls.
+- No backorder-allocation UI beyond display — `check_backorder_availability()`
+  exists server-side but isn't surfaced as an actionable screen.
+- Serial number selection is auto-only (earliest-created-first); there's
+  no manual-override picker UI for authorized users, though the
+  permission (`select_serial_numbers`) and the underlying data model
+  support it.
+- Batch/FIFO-FEFO override UI doesn't exist — the allocation method is
+  set at the order level, not adjustable per-item from the UI.
 
 ## Phase 5A.2 Part 1: Sales Order Entry, Pricing, Discounts, Mobile & PDT Order Entry
 

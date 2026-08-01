@@ -29,6 +29,10 @@ export interface SalesOrderDetail {
   base_quantity: number;
   order_weight: number;
   order_volume: number;
+  is_on_hold: boolean;
+  approval_status: string;
+  credit_validation_status: string;
+  stock_validation_status: string;
   customer: { customer_code: string; business_name: string } | null;
   order_type: { code: string; label: string } | null;
   route: { name: string } | null;

@@ -10,12 +10,29 @@ import type { SalesOrderRow } from '@/hooks/useSalesOrders';
 
 const STATUS_STYLES: Record<SalesOrderStatus, string> = {
   draft: 'bg-slate-100 text-slate-600 dark:bg-slate-800',
+  pending_validation: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
+  validation_failed: 'bg-red-100 text-red-700 dark:bg-red-900/30',
   pending_submission: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
   submitted: 'bg-green-100 text-green-700 dark:bg-green-900/30',
+  pending_approval: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
+  partially_approved: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30',
+  rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30',
+  returned_for_correction: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  on_hold: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30',
+  ready_for_reservation: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30',
+  partially_reserved: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30',
+  fully_reserved: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30',
+  backordered: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  ready_for_fulfilment: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30',
+  partially_converted: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30',
+  fully_converted: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30',
   cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30',
   expired: 'bg-slate-200 text-slate-500 dark:bg-slate-700',
+  closed: 'bg-slate-200 text-slate-400 dark:bg-slate-700',
   sync_pending: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
   sync_failed: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
+  conflict: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
 };
 
 export function SalesOrdersListPage() {
@@ -100,7 +117,7 @@ export function SalesOrdersListPage() {
           <label className="label">Status</label>
           <select className="input" value={status} onChange={(e) => setStatus(e.target.value as SalesOrderStatus | '')}>
             <option value="">All</option>
-            {(['draft', 'pending_submission', 'submitted', 'cancelled', 'expired', 'sync_pending', 'sync_failed'] as SalesOrderStatus[]).map((s) => (
+            {(['draft', 'pending_approval', 'partially_approved', 'approved', 'rejected', 'on_hold', 'fully_reserved', 'backordered', 'cancelled', 'expired', 'sync_pending', 'sync_failed', 'conflict'] as SalesOrderStatus[]).map((s) => (
               <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
             ))}
           </select>

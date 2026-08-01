@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
-export type SalesOrderStatus = 'draft' | 'pending_submission' | 'submitted' | 'cancelled' | 'expired' | 'sync_pending' | 'sync_failed';
+export type SalesOrderStatus =
+  | 'draft' | 'pending_validation' | 'validation_failed' | 'pending_submission' | 'submitted'
+  | 'pending_approval' | 'partially_approved' | 'approved' | 'rejected' | 'returned_for_correction' | 'on_hold'
+  | 'ready_for_reservation' | 'partially_reserved' | 'fully_reserved' | 'backordered' | 'ready_for_fulfilment'
+  | 'partially_converted' | 'fully_converted' | 'cancelled' | 'expired' | 'closed'
+  | 'sync_pending' | 'sync_failed' | 'conflict';
 
 export interface SalesOrderRow {
   id: string;
@@ -65,7 +70,7 @@ export function useSalesOrders(filters: SalesOrderFilters = {}) {
   useEffect(() => { load(); }, [load]);
 
   const submitOrder = useCallback(async (orderId: string) => {
-    const { error } = await supabase.rpc('change_sales_order_status', { p_order_id: orderId, p_new_status: 'submitted' });
+    const { error } = await supabase.rpc('submit_order_for_approval_notified', { p_order_id: orderId });
     if (error) return { error: error.message };
     await load();
     return { data: true };
