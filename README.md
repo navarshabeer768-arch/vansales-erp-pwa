@@ -603,8 +603,22 @@ payment-type changes, a required reason field, building the same
 expected, just from real form controls instead of a sequence of
 `prompt()` calls.
 
-Remaining: 15 of 26 reports, and no manual serial/batch override picker
-(the permission and data model support it; there's still no UI).
+**Fourth follow-up pass** (same day): while building the manual batch/serial
+picker, found a real functional gap — the Stock tab had no way at all to
+trigger reservation for a normal (non-backorder) order item; only the
+backorder-allocation path ever called `create_stock_reservation()`.
+Added an "Items Needing Reservation" list with an Auto Reserve action
+for every unreserved item, plus a Manual Selection action for batch- or
+serial-tracked products. New migration (0058) adds
+`create_manual_batch_reservation()`/`create_manual_serial_reservation()`
+and their `available_batches_for_item()`/`available_serials_for_item()`
+lookups — a manual pick still excludes expired/blocked batches and
+already-reserved serials the same way the automatic FIFO/FEFO path does,
+and still requires the `select_batch`/`select_serial_numbers`/
+`override_fifo_fefo` permissions the requirements doc named for this
+specifically.
+
+Remaining: 15 of 26 reports.
 
 ## Phase 5A.2 Part 1: Sales Order Entry, Pricing, Discounts, Mobile & PDT Order Entry
 

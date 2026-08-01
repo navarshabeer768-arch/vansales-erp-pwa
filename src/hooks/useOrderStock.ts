@@ -74,6 +74,32 @@ export function useOrderStockReservations(orderId: string | undefined) {
     return { data };
   }, [load]);
 
+  const fetchAvailableBatches = useCallback(async (orderItemId: string) => {
+    const { data, error } = await supabase.rpc('available_batches_for_item', { p_order_item_id: orderItemId });
+    if (error) return { error: error.message };
+    return { data: (data ?? []) as { batch_id: string; batch_no: string; expiry_date: string | null; available_quantity: number }[] };
+  }, []);
+
+  const fetchAvailableSerials = useCallback(async (orderItemId: string) => {
+    const { data, error } = await supabase.rpc('available_serials_for_item', { p_order_item_id: orderItemId });
+    if (error) return { error: error.message };
+    return { data: (data ?? []) as { serial_id: string; serial_no: string }[] };
+  }, []);
+
+  const reserveManualBatches = useCallback(async (orderItemId: string, allocations: { batch_id: string; quantity: number }[]) => {
+    const { data, error } = await supabase.rpc('create_manual_batch_reservation', { p_order_item_id: orderItemId, p_batch_allocations: allocations });
+    if (error) return { error: error.message };
+    await load();
+    return { data };
+  }, [load]);
+
+  const reserveManualSerials = useCallback(async (orderItemId: string, serialIds: string[]) => {
+    const { data, error } = await supabase.rpc('create_manual_serial_reservation', { p_order_item_id: orderItemId, p_serial_ids: serialIds });
+    if (error) return { error: error.message };
+    await load();
+    return { data };
+  }, [load]);
+
   const release = useCallback(async (reservationId: string, reason: string) => {
     const { error } = await supabase.rpc('release_stock_reservation', { p_reservation_id: reservationId, p_reason: reason });
     if (error) return { error: error.message };
@@ -88,5 +114,5 @@ export function useOrderStockReservations(orderId: string | undefined) {
     return { data: true };
   }, [load]);
 
-  return { reservations, loading, reload: load, reserveItem, release, extend };
+  return { reservations, loading, reload: load, reserveItem, release, extend, fetchAvailableBatches, fetchAvailableSerials, reserveManualBatches, reserveManualSerials };
 }

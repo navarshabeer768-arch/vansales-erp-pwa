@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Send, Trash2, ClipboardList, Tag, Percent, StickyNote, MapPin, History as HistoryIcon,
@@ -172,6 +172,110 @@ function AmendOrderModal({ open, onClose, items, currentDeliveryDate, currentPay
   );
 }
 
+function ManualReservationModal({ open, onClose, item, fetchBatches, fetchSerials, onSubmitBatches, onSubmitSerials }: {
+  open: boolean;
+  onClose: () => void;
+  item: AmendableItem & { batch_required: boolean; serial_required: boolean } | null;
+  fetchBatches: (itemId: string) => Promise<{ data?: { batch_id: string; batch_no: string; expiry_date: string | null; available_quantity: number }[]; error?: string }>;
+  fetchSerials: (itemId: string) => Promise<{ data?: { serial_id: string; serial_no: string }[]; error?: string }>;
+  onSubmitBatches: (itemId: string, allocations: { batch_id: string; quantity: number }[]) => Promise<{ error?: string }>;
+  onSubmitSerials: (itemId: string, serialIds: string[]) => Promise<{ error?: string }>;
+}) {
+  const { push } = useToast();
+  const [batches, setBatches] = useState<{ batch_id: string; batch_no: string; expiry_date: string | null; available_quantity: number }[]>([]);
+  const [serials, setSerials] = useState<{ serial_id: string; serial_no: string }[]>([]);
+  const [batchQty, setBatchQty] = useState<Record<string, string>>({});
+  const [selectedSerials, setSelectedSerials] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open || !item) return;
+    setLoading(true);
+    setBatchQty({}); setSelectedSerials(new Set());
+    (async () => {
+      if (item.serial_required) {
+        const { data, error } = await fetchSerials(item.id);
+        if (error) push('error', error); else setSerials(data ?? []);
+      } else {
+        const { data, error } = await fetchBatches(item.id);
+        if (error) push('error', error); else setBatches(data ?? []);
+      }
+      setLoading(false);
+    })();
+  }, [open, item]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!item) return null;
+
+  const toggleSerial = (serialId: string) => {
+    setSelectedSerials((prev) => {
+      const next = new Set(prev);
+      if (next.has(serialId)) next.delete(serialId); else next.add(serialId);
+      return next;
+    });
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    if (item.serial_required) {
+      const ids = Array.from(selectedSerials);
+      if (ids.length === 0) { push('error', 'Select at least one serial.'); setSubmitting(false); return; }
+      const { error } = await onSubmitSerials(item.id, ids);
+      setSubmitting(false);
+      if (error) { push('error', error); return; }
+      push('success', `${ids.length} serial(s) reserved.`);
+      onClose();
+    } else {
+      const allocations = Object.entries(batchQty)
+        .filter(([, qty]) => Number(qty) > 0)
+        .map(([batch_id, qty]) => ({ batch_id, quantity: Number(qty) }));
+      if (allocations.length === 0) { push('error', 'Enter a quantity for at least one batch.'); setSubmitting(false); return; }
+      const { error } = await onSubmitBatches(item.id, allocations);
+      setSubmitting(false);
+      if (error) { push('error', error); return; }
+      push('success', 'Batches reserved.');
+      onClose();
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Manual Reservation — ${item.product?.name ?? item.description}`} size="md">
+      {loading && <p className="text-sm text-slate-500">Loading…</p>}
+      {!loading && item.serial_required && (
+        <div className="max-h-80 space-y-1 overflow-y-auto">
+          {serials.map((s) => (
+            <label key={s.serial_id} className="flex items-center gap-2 rounded-lg border border-slate-100 p-2 text-sm dark:border-slate-800">
+              <input type="checkbox" checked={selectedSerials.has(s.serial_id)} onChange={() => toggleSerial(s.serial_id)} />
+              {s.serial_no}
+            </label>
+          ))}
+          {serials.length === 0 && <p className="text-sm text-slate-500">No available serials at this location.</p>}
+        </div>
+      )}
+      {!loading && !item.serial_required && (
+        <div className="max-h-80 space-y-1 overflow-y-auto">
+          {batches.map((b) => (
+            <div key={b.batch_id} className="flex items-center gap-2 rounded-lg border border-slate-100 p-2 text-sm dark:border-slate-800">
+              <span className="flex-1">{b.batch_no} {b.expiry_date ? `(exp ${b.expiry_date})` : ''} — {b.available_quantity} available</span>
+              <input
+                type="number" className="input !w-24" min={0} max={b.available_quantity} placeholder="Qty"
+                value={batchQty[b.batch_id] ?? ''} onChange={(e) => setBatchQty((prev) => ({ ...prev, [b.batch_id]: e.target.value }))}
+              />
+            </div>
+          ))}
+          {batches.length === 0 && <p className="text-sm text-slate-500">No available batches at this location.</p>}
+        </div>
+      )}
+      <div className="mt-6 flex justify-end gap-2">
+        <button className="btn-secondary" onClick={onClose} disabled={submitting}>Cancel</button>
+        <button className="btn-primary" onClick={handleSubmit} disabled={submitting || loading}>
+          {submitting ? 'Reserving…' : 'Reserve Selection'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 export function SalesOrderDetailPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
@@ -183,7 +287,10 @@ export function SalesOrderDetailPage() {
   const { push } = useToast();
   const [newNote, setNewNote] = useState('');
   const { rows: stockValidations, runValidation: runStockValidation } = useOrderStockValidation(orderId);
-  const { reservations, reserveItem, release: releaseReservation } = useOrderStockReservations(orderId);
+  const {
+    reservations, reserveItem, release: releaseReservation,
+    fetchAvailableBatches, fetchAvailableSerials, reserveManualBatches, reserveManualSerials,
+  } = useOrderStockReservations(orderId);
   const { rows: creditValidations, runValidation: runCreditValidation } = useOrderCreditValidation(orderId);
   const { reservation: creditReservation, reserve: reserveCredit } = useOrderCreditReservation(orderId);
   const { requests: creditOverrides, requestOverride } = useOrderCreditOverrides(orderId);
@@ -193,6 +300,7 @@ export function SalesOrderDetailPage() {
   const { cancelOrder: cancelOrderFull } = useOrderCancellation();
   const { amendments, createAmendment, approveAmendment } = useOrderAmendments(orderId);
   const [amendModalOpen, setAmendModalOpen] = useState(false);
+  const [manualReserveItem, setManualReserveItem] = useState<any | null>(null);
 
   if (loading || !order) return <p className="text-center text-slate-400">Loading…</p>;
 
@@ -430,6 +538,41 @@ export function SalesOrderDetailPage() {
                   </tr>
                 ))}
                 {stockValidations.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">Not validated yet.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 className="font-semibold">Items Needing Reservation</h3>
+          <div className="card overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-700">
+                  <th className="p-3">Product</th><th className="p-3">Qty</th><th className="p-3">Tracking</th><th className="p-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.filter((i) => !i.is_free_item && !reservations.some((r) => r.order_item_id === i.id && ['active', 'partially_reserved', 'fully_reserved'].includes(r.status))).map((i) => (
+                  <tr key={i.id} className="border-b border-slate-100 dark:border-slate-800">
+                    <td className="p-3">{i.product?.name ?? i.description}</td>
+                    <td className="p-3">{i.ordered_quantity}</td>
+                    <td className="p-3 text-xs text-slate-500">{i.serial_required ? 'Serial' : i.batch_required ? 'Batch' : 'None'}</td>
+                    <td className="p-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        <PermissionGate permission="sales_orders:reserve_stock">
+                          <button className="text-xs text-blue-600 hover:underline" onClick={() => reserveItem(i.id)}>Auto Reserve</button>
+                        </PermissionGate>
+                        {(i.batch_required || i.serial_required) && (
+                          <PermissionGate permission="sales_orders:select_batch">
+                            <button className="text-xs text-blue-600 hover:underline" onClick={() => setManualReserveItem(i)}>Manual Selection</button>
+                          </PermissionGate>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {items.filter((i) => !i.is_free_item).length === 0 && (
+                  <tr><td colSpan={4} className="p-4 text-center text-slate-400">No items to reserve.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -688,6 +831,15 @@ export function SalesOrderDetailPage() {
         currentDeliveryDate={order.expected_delivery_date}
         currentPaymentType={order.payment_type ?? null}
         onSubmit={(reason, changes) => createAmendment(reason, changes)}
+      />
+      <ManualReservationModal
+        open={!!manualReserveItem}
+        onClose={() => setManualReserveItem(null)}
+        item={manualReserveItem}
+        fetchBatches={fetchAvailableBatches}
+        fetchSerials={fetchAvailableSerials}
+        onSubmitBatches={reserveManualBatches}
+        onSubmitSerials={reserveManualSerials}
       />
     </div>
   );

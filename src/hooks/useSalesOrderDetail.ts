@@ -51,6 +51,8 @@ export interface SalesOrderItemDetail {
   sequence: number;
   sku: string | null;
   description: string | null;
+  batch_required: boolean;
+  serial_required: boolean;
   ordered_quantity: number;
   base_quantity: number;
   original_price: number;
