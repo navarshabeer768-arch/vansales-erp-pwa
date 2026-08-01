@@ -39,6 +39,8 @@ import { SalesOrdersListPage } from '@/pages/Sales/SalesOrdersListPage';
 import { SalesOrderEntryPage } from '@/pages/Sales/SalesOrderEntryPage';
 import { SalesOrderDetailPage } from '@/pages/Sales/SalesOrderDetailPage';
 import { ApprovalQueuePage } from '@/pages/Sales/ApprovalQueuePage';
+import { OrderControlReportsPage } from '@/pages/Sales/OrderControlReportsPage';
+import { SyncConflictsPage } from '@/pages/Sales/SyncConflictsPage';
 import { CustomerMasterPage } from '@/pages/Sales/CustomerMasterPage';
 import { CreditDashboardPage } from '@/pages/Sales/CreditDashboardPage';
 import { PriceListsPage } from '@/pages/Sales/PriceListsPage';
@@ -159,6 +161,8 @@ export default function App() {
               <Route index element={<POSPage />} />
               <Route path="orders" element={<SalesOrdersListPage />} />
               <Route path="approvals" element={<ApprovalQueuePage />} />
+              <Route path="reports" element={<OrderControlReportsPage />} />
+              <Route path="sync-conflicts" element={<SyncConflictsPage />} />
               <Route path="history" element={<SalesHistoryPage />} />
             </Route>
             <Route path="sales/orders/new" element={<SalesOrderEntryPage />} />

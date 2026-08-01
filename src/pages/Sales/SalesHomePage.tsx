@@ -5,6 +5,8 @@ const TABS = [
   { to: '/sales', label: 'New Sale', end: true },
   { to: '/sales/orders', label: 'Orders', end: false },
   { to: '/sales/approvals', label: 'Approvals', end: false },
+  { to: '/sales/sync-conflicts', label: 'Sync Conflicts', end: false },
+  { to: '/sales/reports', label: 'Order Reports', end: false },
   { to: '/sales/history', label: 'Sales History', end: false },
 ];
 

@@ -554,23 +554,34 @@ actions; Hold and Cancel buttons wired to the real Part 2 functions
 flipping a status flag); a new `ApprovalQueuePage` giving supervisors one
 place to see every pending approval step across the company.
 
-**Honest gaps**:
-- No dedicated Reports UI for this phase — the 26 named reports have
-  real underlying data (validations, reservations, overrides, approvals,
-  amendments, cancellations) but no report pages were built.
-- No sync-conflict resolution UI — `resolve_sync_conflict()` and its
-  hook exist, but there's no page surfacing open conflicts yet.
-- No amendment-creation UI — `create_order_amendment()`/`approve_order_amendment()`
-  and their hook exist, but there's no form to build the changes JSON
-  from the UI; amendments can currently only be driven via direct RPC calls.
-- No backorder-allocation UI beyond display — `check_backorder_availability()`
-  exists server-side but isn't surfaced as an actionable screen.
+**Honest gaps** (updated after a follow-up pass — see note below):
 - Serial number selection is auto-only (earliest-created-first); there's
   no manual-override picker UI for authorized users, though the
   permission (`select_serial_numbers`) and the underlying data model
   support it.
 - Batch/FIFO-FEFO override UI doesn't exist — the allocation method is
   set at the order level, not adjustable per-item from the UI.
+- Amendment creation is prompt-based (pick an item by number, type
+  "reduce" or "remove", enter values) rather than a proper form — it
+  works and calls the real `create_order_amendment()` RPC, but it's not
+  polished UI.
+- Backorder-allocation is display-only — `check_backorder_availability()`
+  exists server-side but there's no "allocate now" action button.
+- Of the 26 named reports, 6 are built (Stock Validation, Reservation,
+  Credit Validation, Approval, Backorder, Cancellation); the remaining
+  20 (listed in-page as a gap note) aren't.
+
+**Follow-up pass** (same day): added `OrderControlReportsPage` (6 of the
+26 reports, real data, search/sort/export via the existing `DataTable`),
+`SyncConflictsPage` (lists every open conflict company-wide with a
+resolution dropdown wired to `resolve_sync_conflict()`), and an
+Amendments tab on the order detail page with a working (if prompt-based)
+creation flow and an Approve button. Caught and fixed the same JSX
+mistake twice while inserting new tabs into `SalesOrderDetailPage` — a
+str_replace matching on `)}\n\n{tab === 'notes' && (` consumed the
+`notes` tab's opening condition along with the surrounding text it was
+meant to leave alone; verified via `grep` after each tab insertion from
+then on and caught both occurrences before they shipped.
 
 ## Phase 5A.2 Part 1: Sales Order Entry, Pricing, Discounts, Mobile & PDT Order Entry
 

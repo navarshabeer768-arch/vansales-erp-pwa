@@ -9,11 +9,11 @@ import { useSalesOrders } from '@/hooks/useSalesOrders';
 import { useOrderStockValidation, useOrderStockReservations } from '@/hooks/useOrderStock';
 import { useOrderCreditValidation, useOrderCreditReservation, useOrderCreditOverrides } from '@/hooks/useOrderCredit';
 import { useOrderApprovals } from '@/hooks/useOrderApprovals';
-import { useOrderHold, useOrderBackorders, useOrderCancellation } from '@/hooks/useOrderControl';
+import { useOrderHold, useOrderBackorders, useOrderCancellation, useOrderAmendments } from '@/hooks/useOrderControl';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
-type Tab = 'overview' | 'items' | 'pricing' | 'discounts' | 'stock' | 'credit' | 'approvals' | 'notes' | 'visit' | 'audit';
+type Tab = 'overview' | 'items' | 'pricing' | 'discounts' | 'stock' | 'credit' | 'approvals' | 'amendments' | 'notes' | 'visit' | 'audit';
 
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'overview', label: 'Overview', icon: ClipboardList },
@@ -23,6 +23,7 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'stock', label: 'Stock', icon: PackageCheck },
   { key: 'credit', label: 'Credit', icon: Wallet },
   { key: 'approvals', label: 'Approvals', icon: ShieldCheck },
+  { key: 'amendments', label: 'Amendments', icon: HistoryIcon },
   { key: 'notes', label: 'Notes', icon: StickyNote },
   { key: 'visit', label: 'Visit', icon: MapPin },
   { key: 'audit', label: 'Audit History', icon: HistoryIcon },
@@ -47,6 +48,7 @@ export function SalesOrderDetailPage() {
   const { history: holdHistory, placeOnHold, releaseHold } = useOrderHold(orderId);
   const { backorders } = useOrderBackorders(orderId);
   const { cancelOrder: cancelOrderFull } = useOrderCancellation();
+  const { amendments, createAmendment, approveAmendment } = useOrderAmendments(orderId);
 
   if (loading || !order) return <p className="text-center text-slate-400">Loading…</p>;
 
@@ -419,6 +421,57 @@ export function SalesOrderDetailPage() {
               </div>
             ))}
             {approvalSteps.length === 0 && <p className="text-sm text-slate-500">No approval steps — this order didn't trigger any approval requirement.</p>}
+          </div>
+        </div>
+      )}
+
+      {tab === 'amendments' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Amendments</h3>
+            <PermissionGate permission="sales_orders:create_amendment">
+              <button className="btn-secondary" onClick={async () => {
+                const itemLabel = items.map((i, idx) => `${idx + 1}. ${i.product?.name ?? i.description} (qty ${i.ordered_quantity})`).join('\n');
+                const choice = prompt(`Which item? Enter its number:\n${itemLabel}`);
+                if (!choice) return;
+                const idx = Number(choice) - 1;
+                const item = items[idx];
+                if (!item) { push('error', 'Invalid item number.'); return; }
+                const action = prompt('Type "reduce" to reduce quantity or "remove" to remove the item entirely:', 'reduce');
+                if (!action) return;
+                const reason = prompt('Reason for this amendment:');
+                if (!reason) return;
+                let change: any;
+                if (action === 'remove') {
+                  change = { order_item_id: item.id, change_type: 'remove_item', old_value: { quantity: item.ordered_quantity }, new_value: { quantity: 0 } };
+                } else {
+                  const newQtyStr = prompt(`New quantity (currently ${item.ordered_quantity}):`);
+                  if (!newQtyStr) return;
+                  change = { order_item_id: item.id, change_type: 'reduce_quantity', old_value: { quantity: item.ordered_quantity }, new_value: { quantity: Number(newQtyStr) } };
+                }
+                const { error } = await createAmendment(reason, [change]);
+                if (error) { push('error', error); return; }
+                push('success', 'Amendment created — pending approval.');
+              }}>New Amendment</button>
+            </PermissionGate>
+          </div>
+          <div className="space-y-2">
+            {amendments.map((a) => (
+              <div key={a.id} className="card p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium">{a.amendment_number} <span className="text-xs text-slate-500">(v{a.version})</span></p>
+                  <span className="capitalize">{a.status}</span>
+                </div>
+                <p className="text-slate-500">{a.reason}</p>
+                <p className="text-xs text-slate-400">{new Date(a.request_date).toLocaleString()}</p>
+                {a.status === 'pending' && (
+                  <PermissionGate permission="sales_orders:approve_amendment">
+                    <button className="btn-secondary !py-1 mt-2 text-xs text-green-600" onClick={() => approveAmendment(a.id)}>Approve Amendment</button>
+                  </PermissionGate>
+                )}
+              </div>
+            ))}
+            {amendments.length === 0 && <p className="text-sm text-slate-500">No amendments yet — approved orders can only change through this workflow.</p>}
           </div>
         </div>
       )}
