@@ -66,6 +66,13 @@ import { DriverManagementPage } from '@/pages/HR/DriverManagementPage';
 import { SalesmanManagementPage } from '@/pages/HR/SalesmanManagementPage';
 import { RoutesPage } from '@/pages/Routes/RoutesPage';
 import { VisitsPage } from '@/pages/Routes/VisitsPage';
+import { BeatPlansPage } from '@/pages/Routes/BeatPlansPage';
+import { BeatPlanDetailPage } from '@/pages/Routes/BeatPlanDetailPage';
+import { DailyVisitPlansPage } from '@/pages/Routes/DailyVisitPlansPage';
+import { DailyVisitPlanDetailPage } from '@/pages/Routes/DailyVisitPlanDetailPage';
+import { RouteExecutionPage } from '@/pages/Routes/RouteExecutionPage';
+import { SupervisorMonitoringPage } from '@/pages/Routes/SupervisorMonitoringPage';
+import { RouteReportsPage } from '@/pages/Routes/RouteReportsPage';
 import { PurchasesHomePage } from '@/pages/Purchases/PurchasesHomePage';
 import { PurchaseOrdersPage } from '@/pages/Purchases/PurchaseOrdersPage';
 import { GoodsReceiptsPage } from '@/pages/Purchases/GoodsReceiptsPage';
@@ -150,6 +157,13 @@ export default function App() {
             </Route>
 
             <Route path="routes" element={<RoutesPage />} />
+            <Route path="routes/beat-plans" element={<BeatPlansPage />} />
+            <Route path="routes/beat-plans/:beatPlanId" element={<BeatPlanDetailPage />} />
+            <Route path="routes/daily-plans" element={<DailyVisitPlansPage />} />
+            <Route path="routes/daily-plans/:planId" element={<DailyVisitPlanDetailPage />} />
+            <Route path="routes/execution/:planId" element={<RouteExecutionPage />} />
+            <Route path="routes/monitoring" element={<SupervisorMonitoringPage />} />
+            <Route path="routes/reports" element={<RouteReportsPage />} />
             <Route path="visits" element={<VisitsPage />} />
             <Route path="purchases" element={<PurchasesHomePage />}>
               <Route index element={<PurchaseOrdersPage />} />

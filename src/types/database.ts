@@ -41,7 +41,8 @@ export interface Role {
 export type ModuleName =
   | 'dashboard' | 'sales' | 'customers' | 'van_loading' | 'van_unloading' | 'route_planning'
   | 'customer_visit' | 'inventory' | 'warehouse' | 'purchases' | 'payments'
-  | 'collections' | 'returns' | 'accounting' | 'reports' | 'hr' | 'gps_tracking' | 'settings';
+  | 'collections' | 'returns' | 'accounting' | 'reports' | 'hr' | 'gps_tracking' | 'settings'
+  | 'beat_plans' | 'route_execution';
 
 export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'approve' | 'export';
 

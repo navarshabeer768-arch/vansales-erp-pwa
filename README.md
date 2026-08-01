@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0037). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0042). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,94 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 5A.1 Part 1: Beat Plans, Daily Visit Planning & Route Execution
+
+The largest phase in this build — 18 new tables plus a 13-frequency-type
+recurrence engine and a route execution state machine. Followed this
+phase's own "inspect before implementing" instruction; findings and
+what got reused vs. built new:
+
+- **`routes`/`route_customers`** (Phase 1) — frequency was only
+  daily/weekly/monthly with a single `day_of_week` int, not rich enough
+  for "every 15 days" or "first Monday of the month." Beat Plans
+  **reference** `route_id` — they don't replace routes. The recurrence
+  engine (`beat_plan_schedules` + `beat_plan_schedule_dates`) is the
+  genuinely new layer.
+- **`van_staff_roles`/`van_staff_assignments`** (Phase 3B.1) — the exact
+  flexible multi-role model this phase asked for (no assumption of
+  distinct Driver/Salesman/Collector) already existed and is reused
+  verbatim for `daily_visit_plan_employees.role_code`.
+- **`daily_van_operations`** (Phase 3B.1) — already has a van-day Start
+  → Pause ⇄ Resume → End lifecycle with odometer/cash/stock tracking.
+  **`route_execution_sessions` does not reimplement this** — it links
+  1:1 to a `daily_van_operations` row and adds only the route-specific
+  state that table doesn't have (current customer, completion counts,
+  plan reference). Start/Pause/Resume/End all call the existing
+  `daily_van_operations` RPCs.
+- **`customer_visits`** (Phase 1, has GPS check-in/checkout/photos
+  already) — deliberately not touched, since Part 1 explicitly excludes
+  detailed check-in/checkout. `daily_visit_plan_items` is a new planning
+  layer; how it relates to `customer_visits` during actual check-in is
+  a Part 2 decision.
+
+**Database** (migrations 0038–0042): `beat_plans`, `beat_plan_schedules`
+(13 frequency types: daily/alternate days/weekly/biweekly/every-N-days/
+monthly/specific weekdays/specific dates/first–last week of month/
+custom calendar), `beat_plan_schedule_dates` (materialized, duplicate-
+proof via a unique constraint), `beat_plan_customer_assignments` +
+`beat_plan_assignment_history` (effective-dated, never overwritten),
+`daily_visit_plans` (11-state status with a centralized valid-transition
+function — e.g. Completed can't jump back to Draft), `daily_visit_plan_items`
+(10-state visit status), the full approval workflow (submit/approve/
+reject/return-for-correction), `route_execution_sessions` (wraps
+`daily_van_operations`), `route_pause_logs`, `route_deviation_logs`,
+`route_sequence_history`, `route_reschedule_logs`,
+`route_unplanned_customer_logs`, `route_supervisor_actions`,
+`daily_visit_plan_reopen_log` (snapshots the plan as JSON before
+reopening), `route_sync_status`. All RLS-isolated by company, all
+audited via the existing `log_audit_change()` trigger. `dashboard_stats()`
+extended with real Beat Plan / Route Execution KPIs.
+
+**Client**: `BeatPlansPage` + `BeatPlanDetailPage` (tabbed — Overview/
+Schedule/Customers/Capacity/History, with a visual recurrence-rule
+builder and capacity validation that checks real employee/van overlap,
+not fabricated numbers), `DailyVisitPlansPage` (generate from an active
+beat plan or filter by date, submit/approve/reject inline),
+`DailyVisitPlanDetailPage` (sequence, included vs. excluded customers
+with real exclusion reasons, Mark Ready → Start Route), `RouteExecutionPage`
+(mobile-first: current/next customer cards, live progress bar,
+pause/resume/end, skip/reschedule/add-unplanned, geolocation capture,
+device-agnostic `geo:` navigation link so no single maps provider is
+hardcoded), `SupervisorMonitoringPage` (live status across every route
+for a given day), `RouteReportsPage` (Beat Plan Master, Daily Visit
+Plan, Pending/Missed/Skipped/Rescheduled Customer, Route Pause, and
+Route Deviation reports — searchable/sortable/exportable via the
+existing `DataTable`).
+
+**Honest gaps**:
+- No holiday-calendar table exists in the required 18-table list, so
+  `skip_holiday`/`holiday_handling` are stored on each schedule rule but
+  have no actual holiday data to check against yet.
+- Route optimization (auto-reordering by distance/time), drag-and-drop
+  sequence reordering, and a Leaflet map embedded directly in the
+  execution screen aren't built — the execution screen links out to the
+  existing GPS Tracking page instead of duplicating map logic.
+- Of the 19 named reports, 8 are built with real data (see the list
+  above); the remaining 11 (Beat Plan Customer Assignment, Beat Plan
+  Schedule, Route/Van/Employee Assignment, Route Start, Route End,
+  Route Completion summary, Unplanned Customer, Route Sequence Change,
+  Early Route Closure, Supervisor Action) aren't built yet.
+- No push notifications for the 15 named notification triggers (plan
+  generated, pending approval, route paused too long, etc.) — nothing
+  wired up this phase.
+- Offline sync for route execution has a `route_sync_status` table and
+  an RPC to set it, but no Dexie-backed offline queue wired to the
+  execution screen yet (Sales/Collections/Returns have this from Phase
+  3B.3; Route Execution doesn't yet).
+- Sequence Locking, bulk reordering, and route optimization respecting
+  locked/fixed-time customers are schema-ready (`original_sequence` is
+  preserved everywhere) but have no dedicated UI.
 
 ## Phase 4A.2 Part 2: Customer Pricing & Financial Foundation
 

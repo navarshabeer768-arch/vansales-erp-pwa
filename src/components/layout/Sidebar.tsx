@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Truck, MapPin, Users, Boxes, Warehouse, BookUser,
   ShoppingBag, Wallet, HandCoins, Undo2, Calculator, BarChart3, UserCog,
-  Radar, Settings, X,
+  Radar, Settings, X, MapPinned, CalendarDays,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ModuleName } from '@/types/database';
@@ -22,6 +22,10 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Van Loading', to: '/van-loading', icon: Truck, module: 'van_loading' },
   { label: 'Van Unloading', to: '/van-unloading', icon: Truck, module: 'van_unloading' },
   { label: 'Route Planning', to: '/routes', icon: MapPin, module: 'route_planning' },
+  { label: 'Beat Plans', to: '/routes/beat-plans', icon: MapPinned, module: 'beat_plans' },
+  { label: 'Daily Visit Plans', to: '/routes/daily-plans', icon: CalendarDays, module: 'route_execution' },
+  { label: 'Route Monitoring', to: '/routes/monitoring', icon: Radar, module: 'route_execution' },
+  { label: 'Route Reports', to: '/routes/reports', icon: BarChart3, module: 'route_execution' },
   { label: 'Customer Visit', to: '/visits', icon: Users, module: 'customer_visit' },
   { label: 'Inventory', to: '/inventory', icon: Boxes, module: 'inventory' },
   { label: 'Warehouse', to: '/warehouse', icon: Warehouse, module: 'warehouse' },

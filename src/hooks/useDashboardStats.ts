@@ -30,6 +30,24 @@ export interface DashboardStats {
   vans_live_now: number;
   total_vans: number;
   unread_notifications: number;
+  beat_plans_active: number;
+  beat_plans_inactive: number;
+  daily_plans_generated_today: number;
+  plans_pending_approval: number;
+  routes_ready: number;
+  routes_not_started: number;
+  routes_in_progress: number;
+  routes_paused: number;
+  routes_completed: number;
+  routes_partially_completed: number;
+  planned_customers_today: number;
+  pending_customers_today: number;
+  missed_customers_today: number;
+  skipped_customers_today: number;
+  unplanned_customers_added_today: number;
+  average_route_completion_today: number;
+  late_route_starts_today: number;
+  early_route_closures_today: number;
 }
 
 export function useDashboardStats() {

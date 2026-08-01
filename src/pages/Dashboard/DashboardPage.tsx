@@ -126,6 +126,25 @@ export function DashboardPage() {
       </div>
 
       <div>
+        <SectionTitle>Beat Plans &amp; Route Execution</SectionTitle>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard icon={MapPin} label="Beat plans active / inactive" value={loading ? '—' : `${s?.beat_plans_active ?? 0} / ${s?.beat_plans_inactive ?? 0}`} accent="bg-brand-100 text-brand-700" href="/routes/beat-plans" />
+          <KpiCard icon={CalendarRange} label="Daily plans generated today" value={loading ? '—' : s?.daily_plans_generated_today ?? 0} accent="bg-sky-100 text-sky-700" href="/routes/daily-plans" />
+          <KpiCard icon={ClipboardCheck} label="Plans pending approval" value={loading ? '—' : s?.plans_pending_approval ?? 0} accent="bg-amber-100 text-amber-700" href="/routes/daily-plans" />
+          <KpiCard icon={Radar} label="Routes ready / not started" value={loading ? '—' : `${s?.routes_ready ?? 0} / ${s?.routes_not_started ?? 0}`} accent="bg-slate-100 text-slate-700" href="/routes/monitoring" />
+          <KpiCard icon={TrendingUp} label="Routes in progress / paused" value={loading ? '—' : `${s?.routes_in_progress ?? 0} / ${s?.routes_paused ?? 0}`} accent="bg-emerald-100 text-emerald-700" href="/routes/monitoring" />
+          <KpiCard icon={ClipboardCheck} label="Routes completed / partial" value={loading ? '—' : `${s?.routes_completed ?? 0} / ${s?.routes_partially_completed ?? 0}`} accent="bg-emerald-100 text-emerald-700" href="/routes/monitoring" />
+          <KpiCard icon={TrendingUp} label="Average route completion" value={loading ? '—' : `${s?.average_route_completion_today ?? 0}%`} accent="bg-emerald-100 text-emerald-700" href="/routes/monitoring" />
+          <KpiCard icon={TrendingDown} label="Late starts / early closures" value={loading ? '—' : `${s?.late_route_starts_today ?? 0} / ${s?.early_route_closures_today ?? 0}`} accent="bg-rose-100 text-rose-700" href="/routes/monitoring" />
+        </div>
+        {s && s.planned_customers_today > 0 && (
+          <p className="mt-2 text-xs text-slate-500">
+            {s.pending_customers_today} pending, {s.missed_customers_today} missed, {s.skipped_customers_today} skipped, {s.unplanned_customers_added_today} unplanned added — of {s.planned_customers_today} planned customer visits today across all beat plans.
+          </p>
+        )}
+      </div>
+
+      <div>
         <SectionTitle>Returns &amp; Damages (this month)</SectionTitle>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <KpiCard icon={Undo2} label="Returns this month" value={loading ? '—' : s?.returns_this_month ?? 0} accent="bg-rose-100 text-rose-700" href="/returns" />
