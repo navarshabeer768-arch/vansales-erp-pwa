@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0042). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0046). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,89 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 5A.2 Part 1: Sales Order Entry, Pricing, Discounts, Mobile & PDT Order Entry
+
+Followed this phase's own "inspect before implementing" instruction.
+Findings and what got reused vs. built new:
+
+- **`product_uoms`** (Phase 1) — Multiple UOM support (Piece/Pack/Box/
+  Carton/Case/Bottle/Kg/Litre, with a `conversion_factor` back to the
+  base unit, per-UOM barcode, per-UOM price, `is_default_sale_unit`)
+  **already existed in full**. Nothing to build for this requirement —
+  order items just reference it.
+- **`resolve_customer_price()`** (4A.2 Part 2) — the centralized pricing
+  engine this doc asks for. Reused as the single pricing authority.
+  **Real bug found and fixed while inspecting it**: the documented and
+  schema-supported priority chain is Customer → Customer Group → Price
+  List → Route Price → Branch Price → Promotion → Standard
+  (`product_price_rules.scope_type` already had a `'route'` option in
+  its check constraint) — but the function's actual logic jumped
+  straight from price list to branch, **never checking route price at
+  all**. Fixed in migration 0043, since Sales Order Entry is the first
+  real caller that would have silently hit this gap.
+- **`free_quantity_rules`** (4A.2 Part 2 — at the time built as "schema
+  + hook only, no UI page") — Buy-X-Get-Y / free quantity automation
+  finally gets its first real caller: `recalculate_sales_order_totals()`
+  applies it automatically per completed slab of the buy quantity.
+- **`customer_discounts`** (4A.2 Part 2) — Customer/Product/Category
+  discount auto-application reuses this table directly rather than
+  inventing a new discount-rule concept.
+- **`payment_methods`/`payment_terms`** (4A.2 Part 1), **`van_stock`/
+  `warehouse_stock`** (display-only — no reservation/deduction happens
+  this phase), **`routes`/`beat_plans`/`daily_visit_plans`/
+  `daily_visit_plan_items`** (5A.1), **`next_document_no()`** pattern
+  (Phase 1, extended with an order-type-aware prefix), and the existing
+  barcode/scan stack (`useScanLookup`, `useHidScanListener`,
+  `BarcodeScannerModal`, `useRecentAndFavouriteProducts`) — all reused
+  as-is, nothing duplicated.
+
+**Database** (migrations 0043–0046): `sales_order_types` (10 configurable
+types — Van Sales/Pre-Sales/Warehouse/Cash/Credit/Hybrid/Replacement/
+Promotional/Sample/Custom, each with its own default stock source,
+default payment type, and reservation rule for Part 2 to read),
+`sales_orders`, `sales_order_items`, `sales_order_notes`,
+`sales_order_status_history`. `create_sales_order()` is the atomic
+entry point — same never-trust-the-client principle as `create_sale()`:
+prices, discounts, taxes, and totals are always recomputed server-side.
+Its item-processing logic (pricing resolution, discount validation
+against `max_discount_pct`/`min_selling_price`, free-item application,
+totals) lives in one shared `recalculate_sales_order_totals()` function
+that both `create_sales_order()` and `update_draft_sales_order_items()`
+call — **caught myself duplicating this ~150-line block between the two
+paths on the first pass and refactored it into the shared function**
+before it could drift out of sync. `change_sales_order_status()` centrally
+enforces valid transitions across the 7-state status set the doc names
+(Draft/Pending Submission/Submitted/Cancelled/Expired/Sync Pending/
+Sync Failed — approval and reservation statuses are explicitly Part 2).
+
+**Client**: `SalesOrderEntryPage` (mobile-first, barcode/HID scanner
+integration via the existing scan stack, live customer context showing
+credit type/available credit/outstanding for display only), `SalesOrdersListPage`
+(search/filter by date/status/van/route, inline submit/delete-draft),
+`SalesOrderDetailPage` (tabbed: Overview/Items/Pricing/Discounts/Notes/
+Visit/Audit History). Added as a new "Orders" tab inside the existing
+Sales section rather than a separate top-level module.
+
+**Honest gaps**:
+- No dedicated PDT-optimized layout variant (large buttons, numeric
+  keypad, battery-efficient minimal-animation mode) — the entry page is
+  mobile-responsive but not PDT-specialized yet.
+- No offline draft queue wired up — orders created while offline are
+  stored with `status = 'sync_pending'` and the schema supports it, but
+  there's no Dexie-backed queue/retry UI like Sales/Collections/Returns
+  have from Phase 3B.3.
+- Order List's Card View and Mobile View (doc asks for Table/Card/Mobile)
+  — only Table view is built, via the existing `DataTable` component.
+  Saved filters and bulk actions on the order list aren't built either.
+- Combo Offer promotions (as distinct from Buy-X-Get-Y slabs) aren't
+  implemented — `free_quantity_rules` only models the buy/free-quantity
+  shape, not a multi-product bundle price.
+- Price override and discount override are permission-gated and stored
+  (original/requested/reason/requested_by) but there's no separate
+  approval queue UI yet — Part 1 auto-applies an override the moment
+  someone with the permission enters it, since a full approval workflow
+  is Part 2 territory for order approval generally.
 
 ## Phase 5A.1 Part 1: Beat Plans, Daily Visit Planning & Route Execution
 

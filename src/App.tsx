@@ -35,6 +35,9 @@ import { VanDetailPage } from '@/pages/Van/VanDetailPage';
 import { VanStaffReportPage } from '@/pages/Van/VanStaffReportPage';
 import { VanUnloadingPage } from '@/pages/Van/VanUnloadingPage';
 import { SalesHomePage } from '@/pages/Sales/SalesHomePage';
+import { SalesOrdersListPage } from '@/pages/Sales/SalesOrdersListPage';
+import { SalesOrderEntryPage } from '@/pages/Sales/SalesOrderEntryPage';
+import { SalesOrderDetailPage } from '@/pages/Sales/SalesOrderDetailPage';
 import { CustomerMasterPage } from '@/pages/Sales/CustomerMasterPage';
 import { CreditDashboardPage } from '@/pages/Sales/CreditDashboardPage';
 import { PriceListsPage } from '@/pages/Sales/PriceListsPage';
@@ -153,8 +156,11 @@ export default function App() {
 
             <Route path="sales" element={<SalesHomePage />}>
               <Route index element={<POSPage />} />
+              <Route path="orders" element={<SalesOrdersListPage />} />
               <Route path="history" element={<SalesHistoryPage />} />
             </Route>
+            <Route path="sales/orders/new" element={<SalesOrderEntryPage />} />
+            <Route path="sales/orders/:orderId" element={<SalesOrderDetailPage />} />
 
             <Route path="routes" element={<RoutesPage />} />
             <Route path="routes/beat-plans" element={<BeatPlansPage />} />
