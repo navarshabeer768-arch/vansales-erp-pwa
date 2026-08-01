@@ -41,6 +41,9 @@ import { SalesOrderDetailPage } from '@/pages/Sales/SalesOrderDetailPage';
 import { ApprovalQueuePage } from '@/pages/Sales/ApprovalQueuePage';
 import { OrderControlReportsPage } from '@/pages/Sales/OrderControlReportsPage';
 import { SyncConflictsPage } from '@/pages/Sales/SyncConflictsPage';
+import { SalesInvoicesListPage } from '@/pages/Sales/SalesInvoicesListPage';
+import { SalesInvoiceEntryPage } from '@/pages/Sales/SalesInvoiceEntryPage';
+import { SalesInvoiceDetailPage } from '@/pages/Sales/SalesInvoiceDetailPage';
 import { CustomerMasterPage } from '@/pages/Sales/CustomerMasterPage';
 import { CreditDashboardPage } from '@/pages/Sales/CreditDashboardPage';
 import { PriceListsPage } from '@/pages/Sales/PriceListsPage';
@@ -160,6 +163,7 @@ export default function App() {
             <Route path="sales" element={<SalesHomePage />}>
               <Route index element={<POSPage />} />
               <Route path="orders" element={<SalesOrdersListPage />} />
+              <Route path="invoices" element={<SalesInvoicesListPage />} />
               <Route path="approvals" element={<ApprovalQueuePage />} />
               <Route path="reports" element={<OrderControlReportsPage />} />
               <Route path="sync-conflicts" element={<SyncConflictsPage />} />
@@ -167,6 +171,8 @@ export default function App() {
             </Route>
             <Route path="sales/orders/new" element={<SalesOrderEntryPage />} />
             <Route path="sales/orders/:orderId" element={<SalesOrderDetailPage />} />
+            <Route path="sales/invoices/new" element={<SalesInvoiceEntryPage />} />
+            <Route path="sales/invoices/:invoiceId" element={<SalesInvoiceDetailPage />} />
 
             <Route path="routes" element={<RoutesPage />} />
             <Route path="routes/beat-plans" element={<BeatPlansPage />} />

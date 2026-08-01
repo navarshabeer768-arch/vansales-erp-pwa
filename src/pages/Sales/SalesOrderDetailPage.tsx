@@ -10,6 +10,7 @@ import { useOrderStockValidation, useOrderStockReservations } from '@/hooks/useO
 import { useOrderCreditValidation, useOrderCreditReservation, useOrderCreditOverrides } from '@/hooks/useOrderCredit';
 import { useOrderApprovals } from '@/hooks/useOrderApprovals';
 import { useOrderHold, useOrderBackorders, useOrderCancellation, useOrderAmendments } from '@/hooks/useOrderControl';
+import { useOrderConversionSummary, useConvertOrderToInvoice } from '@/hooks/useOrderConversion';
 import { supabase } from '@/lib/supabase';
 import { Modal } from '@/components/ui/Modal';
 import { PermissionGate } from '@/components/common/PermissionGate';
@@ -276,6 +277,76 @@ function ManualReservationModal({ open, onClose, item, fetchBatches, fetchSerial
   );
 }
 
+function ConvertToInvoiceModal({ open, onClose, orderId }: { open: boolean; onClose: () => void; orderId: string }) {
+  const navigate = useNavigate();
+  const { push } = useToast();
+  const { rows, loading } = useOrderConversionSummary(orderId);
+  const { convert, submitting } = useConvertOrderToInvoice();
+  const [selectedQty, setSelectedQty] = useState<Record<string, string>>({});
+
+  const toggleFull = (itemId: string, remaining: number) => {
+    setSelectedQty((prev) => ({ ...prev, [itemId]: prev[itemId] ? '' : String(remaining) }));
+  };
+
+  const handleConvert = async () => {
+    const selections = Object.entries(selectedQty)
+      .filter(([, qty]) => Number(qty) > 0)
+      .map(([order_item_id, qty]) => ({ order_item_id, quantity: Number(qty) }));
+    if (selections.length === 0) { push('error', 'Select at least one item with a quantity to convert.'); return; }
+
+    const { data, error } = await convert(orderId, selections);
+    if (error) { push('error', error); return; }
+    push('success', 'Invoice draft created from this order.');
+    onClose();
+    if (data) navigate(`/sales/invoices/${data}`);
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Convert Order to Invoice" size="lg">
+      {loading && <p className="text-sm text-slate-500">Loading…</p>}
+      {!loading && (
+        <div className="space-y-3">
+          <p className="text-sm text-slate-500">Select items and quantities to convert. Approved prices and discounts are preserved exactly.</p>
+          <div className="max-h-96 space-y-2 overflow-y-auto">
+            {rows.filter((r) => !r.is_free_item).map((r) => (
+              <div key={r.order_item_id} className="rounded-lg border border-slate-100 p-3 text-sm dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{r.product_name}</span>
+                  <button className="text-xs text-blue-600 hover:underline" onClick={() => toggleFull(r.order_item_id, r.remaining_quantity)}>
+                    {selectedQty[r.order_item_id] ? 'Clear' : 'Use Remaining'}
+                  </button>
+                </div>
+                <div className="mt-1 grid grid-cols-4 gap-2 text-xs text-slate-500">
+                  <span>Ordered: {r.ordered_quantity}</span>
+                  <span>Converted: {r.previously_converted_quantity}</span>
+                  <span>Cancelled: {r.cancelled_quantity}</span>
+                  <span>Remaining: {r.remaining_quantity}</span>
+                </div>
+                <div className="mt-2">
+                  <input
+                    type="number" className="input !w-32" min={0} max={r.remaining_quantity} placeholder="Qty to invoice"
+                    value={selectedQty[r.order_item_id] ?? ''}
+                    onChange={(e) => setSelectedQty((prev) => ({ ...prev, [r.order_item_id]: e.target.value }))}
+                    disabled={r.remaining_quantity <= 0}
+                  />
+                  {r.remaining_quantity <= 0 && <span className="ml-2 text-xs text-slate-400">Fully converted</span>}
+                </div>
+              </div>
+            ))}
+            {rows.filter((r) => !r.is_free_item).length === 0 && <p className="text-sm text-slate-500">No convertible items on this order.</p>}
+          </div>
+        </div>
+      )}
+      <div className="mt-6 flex justify-end gap-2">
+        <button className="btn-secondary" onClick={onClose} disabled={submitting}>Cancel</button>
+        <button className="btn-primary" onClick={handleConvert} disabled={submitting || loading}>
+          {submitting ? 'Converting…' : 'Create Invoice Draft'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 export function SalesOrderDetailPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
@@ -300,6 +371,7 @@ export function SalesOrderDetailPage() {
   const { cancelOrder: cancelOrderFull } = useOrderCancellation();
   const { amendments, createAmendment, approveAmendment } = useOrderAmendments(orderId);
   const [amendModalOpen, setAmendModalOpen] = useState(false);
+  const [convertModalOpen, setConvertModalOpen] = useState(false);
   const [manualReserveItem, setManualReserveItem] = useState<any | null>(null);
 
   if (loading || !order) return <p className="text-center text-slate-400">Loading…</p>;
@@ -385,6 +457,11 @@ export function SalesOrderDetailPage() {
           {order.status === 'draft' && (
             <PermissionGate permission="sales_orders:delete_draft">
               <button className="btn-secondary text-red-600" onClick={handleDelete}><Trash2 size={16} /> Delete Draft</button>
+            </PermissionGate>
+          )}
+          {['approved', 'partially_approved', 'ready_for_reservation', 'partially_reserved', 'fully_reserved', 'ready_for_fulfilment', 'partially_converted'].includes(order.status) && (
+            <PermissionGate permission="sales_invoices:convert_sales_order">
+              <button className="btn-primary" onClick={() => setConvertModalOpen(true)}>Convert to Invoice</button>
             </PermissionGate>
           )}
           {!order.is_on_hold && !['cancelled', 'closed', 'fully_converted', 'expired'].includes(order.status) && (
@@ -824,6 +901,7 @@ export function SalesOrderDetailPage() {
         </div>
       )}
 
+      <ConvertToInvoiceModal open={convertModalOpen} onClose={() => setConvertModalOpen(false)} orderId={order.id} />
       <AmendOrderModal
         open={amendModalOpen}
         onClose={() => setAmendModalOpen(false)}

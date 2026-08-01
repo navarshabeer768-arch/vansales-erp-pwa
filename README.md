@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0057). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0064). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,76 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 5B.1 Part 1: Sales Invoice Creation, POS Billing, Invoice Entry, Order-to-Invoice Conversion, Mobile & PDT Billing
+
+Followed the doc's "inspect before implementing" instruction. Key finding:
+`sales_invoices` (this phase) is a **new, draft-only layer**, deliberately
+separate from the existing `sales`/`sale_items` tables (Phase 1) which
+already do immediate, stock-deducting cash van sales — that flow is
+completely untouched. The two coexist: fast cash van sales keep using
+`sales`; anything needing order conversion, partial conversion, or
+richer multi-UOM/promotion-staged draft review uses the new
+`sales_invoices`, which will be posted in a later phase.
+
+**What's reused, not duplicated**: `resolve_customer_price()` and
+`customer_discounts`/`free_quantity_rules` (the exact same pricing/
+discount/promotion engine Sales Orders already use — no second pricing
+engine); the Sales Order approval/reservation data itself, since
+converting an order copies its **approved** price and discount verbatim
+rather than re-pricing; `product_uoms`, the barcode/scan stack, and the
+offline `client_uuid` idempotency pattern (all already built for Sales
+Orders); `next_document_no()`'s numbering pattern, extended with an
+invoice-type-aware prefix. Two small additive columns were genuinely
+missing and added here: `customers.is_tax_exempt` and
+`products.is_tax_exempt` — tax turned out to be a flat per-product rate
+with no dedicated tax-rules table, so exemption needed its own field.
+
+**Database** (migrations 0059–0064, 1,385 lines): `sales_invoice_types`
+(17 configurable types), `sales_invoices`/`sales_invoice_items` (draft-
+only, with Part-2 approval/posting/stock/credit status columns present
+as a schema foundation but never written to a real value this phase —
+`posting_status` even has a check constraint that only allows
+`'not_posted'`, so it's structurally impossible for this phase to fake a
+posted invoice). `create_sales_invoice()` + a shared
+`recalculate_sales_invoice_totals()` (pricing, discount, tax-inclusive/
+exclusive calculation, tax exemption, configurable round-off rules) used
+by both the create and edit paths, same pattern established in 5A.2 Part
+1. Full and partial Sales Order → Invoice conversion
+(`convert_sales_order_to_invoice()`, `order_item_remaining_to_convert()`
+guarding against over-conversion, `sales_order_conversion_summary()` for
+the picker UI), correctly rolling the order to `partially_converted`/
+`fully_converted`. Draft editing, cancellation (preserves history, never
+deletes), unsynced-draft deletion, and repeat-invoice creation (re-
+resolves current prices rather than copying stale ones, per the doc's
+explicit instruction not to copy old posting/payment/approval state).
+Price/discount/free-quantity request foundations (recorded, never auto-
+approved — no invoice-level approval engine exists yet, that's Part 2).
+Offline sync status + conflict detection/resolution mirroring the Sales
+Order pattern. 23-action permission module, audit triggers, dashboard
+widgets (explicitly excluded from any "finalized sales revenue" figure).
+
+**Client**: `SalesInvoiceEntryPage` (mobile-first, walk-in customer
+toggle, barcode/HID scanning reused from Sales Order Entry),
+`SalesInvoicesListPage` (search/filter, inline submit/cancel/repeat),
+`SalesInvoiceDetailPage` (Overview/Items/Pricing/Totals/Notes/Audit
+History tabs), and a `ConvertToInvoiceModal` on the Sales Order detail
+page — shows ordered/converted/cancelled/remaining per item with a
+"Use Remaining" shortcut, so partial conversion is a real, informed
+choice rather than a guess.
+
+**Honest gaps**:
+- No dedicated Reports UI for the 15 named draft reports.
+- No notifications wired up for this phase's 10 named triggers.
+- PDT-specific optimizations (large touch targets, numeric keypad, quick-
+  quantity buttons) aren't built — the entry page is mobile-responsive
+  but not PDT-specialized, same gap noted for Sales Order Entry.
+- No Card/Mobile/POS list views on the invoice list — Table view only.
+- No dedicated UI for price/discount/free-quantity override *requests*
+  on invoices (the RPCs and tables exist; nothing surfaces them yet).
+- No manual multi-invoice-from-one-order UI beyond running the
+  conversion modal twice — there's no single screen showing "2 of 3
+  invoices created from this order" side by side.
 
 ## Phase 5A.2 Part 2: Stock Reservation, Credit Control, Order Approvals, Backorders, Amendments, Cancellation, Offline Revalidation
 
