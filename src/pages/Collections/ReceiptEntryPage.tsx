@@ -76,6 +76,22 @@ export function ReceiptEntryPage() {
     if (receiptAmount <= 0) { push('error', 'Enter at least one payment component.'); return; }
     if (mode === 'unallocated' && !unallocatedReason.trim()) { push('error', 'Enter a reason for the unallocated receipt.'); return; }
 
+    const chequeComponent = components.find((c) => c.payment_method_code === 'cheque' && c.cheque?.cheque_number);
+    const cardComponent = components.find((c) => c.payment_method_code === 'card' && c.card?.authorization_code);
+    const bankComponent = components.find((c) => c.payment_method_code === 'bank_transfer' && c.bank?.transfer_reference);
+
+    const { data: duplicates, error: dupError } = await supabase.rpc('check_duplicate_payment_warning', {
+      p_customer_id: customerId, p_amount: receiptAmount, p_payment_method_code: components[0]?.payment_method_code ?? 'cash',
+      p_reference: referenceNumber || null,
+      p_cheque_number: chequeComponent?.cheque?.cheque_number ?? null,
+      p_card_authorization_code: cardComponent?.card?.authorization_code ?? null,
+      p_bank_reference: bankComponent?.bank?.transfer_reference ?? null,
+    });
+    if (!dupError && duplicates && duplicates.length > 0) {
+      const list = duplicates.map((d: any) => `${d.receipt_number} (${d.receipt_date}, ${d.amount}, matched on ${d.matched_on.replace(/_/g, ' ')})`).join('\n');
+      if (!confirm(`Possible duplicate payment(s) found:\n${list}\n\nSave anyway?`)) return;
+    }
+
     const invoiceAllocations = mode === 'invoices'
       ? Object.entries(manualAllocations).filter(([, v]) => Number(v) > 0).map(([invoice_id, v]) => ({ invoice_id, amount: Number(v) }))
       : undefined;

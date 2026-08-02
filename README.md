@@ -542,21 +542,18 @@ override / Advance Payment / Unallocated Receipt), `ReceiptVouchersListPage`
 (Overview/Payment Components/Invoice Allocations/Notes/Audit History).
 
 **Honest gaps**:
-- No dedicated Reports UI for the 16 named draft reports.
-- No PDT-specific optimizations (large touch targets, numeric keypad) —
-  same gap noted for prior mobile entry pages.
-- No cash denomination entry UI (the doc's optional 500/200/100/.../coins
-  breakdown with difference warning) — receipt amount is entered
-  directly.
-- No route-collection screen showing today's planned customers with
-  outstanding/overdue indicators — receipt entry can be launched from a
-  visit via URL params, but there's no dedicated route-collection list.
-- No payment-promise UI (the `payment_promises` table and
-  `create_payment_promise()` function exist; nothing surfaces them yet).
-- No sync-conflict resolution page for receipts (mirrors the invoice/
-  order pattern but wasn't built this pass).
-- No offline duplicate-warning UI hookup — `check_duplicate_payment_warning()`
-  exists but isn't called from the entry page yet.
+**Follow-up pass** (same day): wired `check_duplicate_payment_warning()`
+into the entry page (checks amount/reference/cheque-number/card-auth/
+bank-reference before saving, warns with a confirm dialog rather than
+blocking). Added `ReceiptSyncConflictsPage` (mirrors the invoice/order
+pattern), `PaymentPromisesPage` (list open promises with Kept/Broken
+actions plus a quick-create form), and `ReceiptReportsPage` (5 of 16
+named reports: Receipt Draft Register, Cash/Cheque Collection Draft,
+Employee/Van Collection Draft).
+
+Remaining: 11 of 16 reports, no PDT-specific optimizations, no cash
+denomination entry UI, no dedicated route-collection screen showing
+today's planned customers with outstanding indicators.
 
 ## Phase 5B.1 Part 2: Stock Posting, Credit Posting, Invoice Approvals, Final Invoice Posting, Printing, Offline Invoice Control
 

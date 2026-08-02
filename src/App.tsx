@@ -51,6 +51,9 @@ import { CollectionsHomePage } from '@/pages/Collections/CollectionsHomePage';
 import { ReceiptVouchersListPage } from '@/pages/Collections/ReceiptVouchersListPage';
 import { ReceiptEntryPage } from '@/pages/Collections/ReceiptEntryPage';
 import { ReceiptVoucherDetailPage } from '@/pages/Collections/ReceiptVoucherDetailPage';
+import { ReceiptSyncConflictsPage } from '@/pages/Collections/ReceiptSyncConflictsPage';
+import { PaymentPromisesPage } from '@/pages/Collections/PaymentPromisesPage';
+import { ReceiptReportsPage } from '@/pages/Collections/ReceiptReportsPage';
 import { CustomerMasterPage } from '@/pages/Sales/CustomerMasterPage';
 import { CreditDashboardPage } from '@/pages/Sales/CreditDashboardPage';
 import { PriceListsPage } from '@/pages/Sales/PriceListsPage';
@@ -187,6 +190,9 @@ export default function App() {
             <Route path="collections" element={<CollectionsHomePage />}>
               <Route index element={<Navigate to="receipts" replace />} />
               <Route path="receipts" element={<ReceiptVouchersListPage />} />
+              <Route path="sync-conflicts" element={<ReceiptSyncConflictsPage />} />
+              <Route path="payment-promises" element={<PaymentPromisesPage />} />
+              <Route path="reports" element={<ReceiptReportsPage />} />
             </Route>
             <Route path="collections/receipts/new" element={<ReceiptEntryPage />} />
             <Route path="collections/receipts/:receiptId" element={<ReceiptVoucherDetailPage />} />
