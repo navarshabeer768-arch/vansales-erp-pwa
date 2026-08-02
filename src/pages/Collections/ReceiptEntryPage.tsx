@@ -45,6 +45,12 @@ export function ReceiptEntryPage() {
   const [referenceNumber, setReferenceNumber] = useState('');
   const [remarks, setRemarks] = useState('');
   const [isOffline] = useState(!navigator.onLine);
+  const [denomOpen, setDenomOpen] = useState<number | null>(null);
+  const [denominations, setDenominations] = useState<Record<number, Record<string, string>>>({});
+
+  const DENOM_VALUES = [500, 200, 100, 50, 20, 10, 5, 1, 0.5, 0.25];
+
+  const denomTotal = (idx: number) => Object.entries(denominations[idx] ?? {}).reduce((sum, [value, count]) => sum + Number(value) * (Number(count) || 0), 0);
 
   const dailyVisitPlanId = searchParams.get('plan_id') ?? undefined;
   const customerVisitId = searchParams.get('visit_id') ?? undefined;
@@ -96,10 +102,16 @@ export function ReceiptEntryPage() {
       ? Object.entries(manualAllocations).filter(([, v]) => Number(v) > 0).map(([invoice_id, v]) => ({ invoice_id, amount: Number(v) }))
       : undefined;
 
+    const componentsWithDenominations = components.map((c, idx) => {
+      if (c.payment_method_code !== 'cash' || !denominations[idx]) return c;
+      const breakdown = Object.entries(denominations[idx]).filter(([, count]) => Number(count) > 0).map(([v, count]) => `${count}x${v}`).join(', ');
+      return breakdown ? { ...c, notes: `${c.notes ? c.notes + '; ' : ''}Denominations: ${breakdown}` } : c;
+    });
+
     const { data, error } = await submit({
       collectionTypeCode,
       customerId,
-      paymentComponents: components.filter((c) => c.amount > 0),
+      paymentComponents: componentsWithDenominations.filter((c) => c.amount > 0),
       invoiceAllocations,
       allocationMode: 'manual',
       advanceDetails: mode === 'advance' ? { purpose: advancePurpose || undefined } : null,
@@ -187,6 +199,37 @@ export function ReceiptEntryPage() {
                   <button className="text-red-500" onClick={() => removeComponent(idx)}><Trash2 size={16} /></button>
                 )}
               </div>
+              {c.payment_method_code === 'cash' && (
+                <div className="mt-2">
+                  <button className="text-xs text-blue-600 hover:underline" onClick={() => setDenomOpen(denomOpen === idx ? null : idx)}>
+                    {denomOpen === idx ? 'Hide denomination breakdown' : 'Enter cash denomination breakdown (optional)'}
+                  </button>
+                  {denomOpen === idx && (
+                    <div className="mt-2 rounded-lg border border-slate-100 p-2 dark:border-slate-800">
+                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                        {DENOM_VALUES.map((v) => (
+                          <div key={v} className="flex items-center gap-1">
+                            <span className="w-10 text-xs text-slate-500">{v < 1 ? `${v * 100}¢` : v}</span>
+                            <input
+                              type="number" min={0} className="input !w-16 !py-1 text-xs"
+                              value={denominations[idx]?.[v] ?? ''}
+                              onChange={(e) => setDenominations((prev) => ({ ...prev, [idx]: { ...prev[idx], [v]: e.target.value } }))}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-xs">
+                        <span>Denomination Total: <strong>{denomTotal(idx).toFixed(2)}</strong></span>
+                        <span className={Math.abs(denomTotal(idx) - (Number(c.amount) || 0)) > 0.001 ? 'font-medium text-red-600' : 'text-green-600'}>
+                          {Math.abs(denomTotal(idx) - (Number(c.amount) || 0)) > 0.001
+                            ? `Difference: ${(denomTotal(idx) - (Number(c.amount) || 0)).toFixed(2)}`
+                            : 'Matches entered amount'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {c.payment_method_code === 'cheque' && (
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <input className="input" placeholder="Cheque Number" value={c.cheque?.cheque_number ?? ''} onChange={(e) => updateComponent(idx, { cheque: { ...c.cheque, cheque_number: e.target.value, cheque_date: c.cheque?.cheque_date ?? new Date().toISOString().slice(0, 10), bank_name: c.cheque?.bank_name ?? '' } })} />

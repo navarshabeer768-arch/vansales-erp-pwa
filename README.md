@@ -551,9 +551,17 @@ actions plus a quick-create form), and `ReceiptReportsPage` (5 of 16
 named reports: Receipt Draft Register, Cash/Cheque Collection Draft,
 Employee/Van Collection Draft).
 
-Remaining: 11 of 16 reports, no PDT-specific optimizations, no cash
-denomination entry UI, no dedicated route-collection screen showing
-today's planned customers with outstanding indicators.
+**Second follow-up pass** (same day): added `RouteCollectionPage` —
+finds the current employee's approved daily visit plan for today and
+lists its customers in sequence with outstanding balance, days since
+last payment, and a one-tap "Collect" button that launches the receipt
+entry pre-filled with the customer and visit plan. Added cash
+denomination entry to `ReceiptEntryPage` — an optional per-cash-component
+breakdown (500/200/100/50/20/10/5/1/0.50/0.25) that computes a running
+total, warns on mismatch against the entered amount, and folds the
+breakdown into the payment component's notes on save.
+
+Remaining: 11 of 16 reports, no PDT-specific optimizations.
 
 ## Phase 5B.1 Part 2: Stock Posting, Credit Posting, Invoice Approvals, Final Invoice Posting, Printing, Offline Invoice Control
 
