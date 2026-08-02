@@ -3,8 +3,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 export type SalesInvoiceStatus =
-  | 'draft' | 'pending_submission' | 'submitted' | 'returned_for_correction' | 'cancelled_before_posting'
-  | 'expired' | 'sync_pending' | 'sync_failed' | 'conflict';
+  | 'draft' | 'pending_validation' | 'validation_failed' | 'pending_submission' | 'pending_approval'
+  | 'partially_approved' | 'approved' | 'returned_for_correction' | 'on_hold' | 'ready_to_post'
+  | 'posting' | 'posted' | 'posting_failed' | 'cancelled_before_posting' | 'void_requested' | 'voided'
+  | 'sync_pending' | 'sync_failed' | 'conflict' | 'submitted' | 'expired';
 
 export interface SalesInvoiceRow {
   id: string;

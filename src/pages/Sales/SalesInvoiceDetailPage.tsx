@@ -1,20 +1,25 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, ClipboardList, Tag, Calculator, StickyNote, History as HistoryIcon, XCircle, Percent } from 'lucide-react';
+import { ArrowLeft, Send, ClipboardList, Tag, Calculator, StickyNote, History as HistoryIcon, XCircle, Percent, PackageCheck, Wallet, ShieldCheck, PauseCircle, PlayCircle } from 'lucide-react';
 import { useSalesInvoiceDetail, useSalesInvoiceNotes, useSalesInvoiceStatusHistory } from '@/hooks/useSalesInvoiceDetail';
 import { useSalesInvoices } from '@/hooks/useSalesInvoices';
 import { useInvoiceRequests } from '@/hooks/useInvoiceRequests';
+import { useInvoiceStockValidation, useInvoiceCreditValidation, useInvoiceApprovals, useInvoiceHold, useInvoicePosting, useInvoicePostingHistory } from '@/hooks/useInvoicePosting';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
-type Tab = 'overview' | 'items' | 'pricing' | 'totals' | 'requests' | 'notes' | 'audit';
+type Tab = 'overview' | 'items' | 'pricing' | 'totals' | 'stock' | 'credit' | 'approvals' | 'requests' | 'posting' | 'notes' | 'audit';
 
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'overview', label: 'Overview', icon: ClipboardList },
   { key: 'items', label: 'Items', icon: Tag },
   { key: 'pricing', label: 'Pricing', icon: Tag },
   { key: 'totals', label: 'Totals', icon: Calculator },
+  { key: 'stock', label: 'Stock', icon: PackageCheck },
+  { key: 'credit', label: 'Credit', icon: Wallet },
+  { key: 'approvals', label: 'Approvals', icon: ShieldCheck },
   { key: 'requests', label: 'Requests', icon: Percent },
+  { key: 'posting', label: 'Posting', icon: HistoryIcon },
   { key: 'notes', label: 'Notes', icon: StickyNote },
   { key: 'audit', label: 'Audit History', icon: HistoryIcon },
 ];
@@ -31,6 +36,12 @@ export function SalesInvoiceDetailPage() {
     priceRequests, discountRequests, freeQuantityRequests,
     requestPriceOverride, requestDiscountOverride, requestManualFreeQuantity,
   } = useInvoiceRequests(invoiceId);
+  const { rows: stockValidations, runValidation: runStockValidation } = useInvoiceStockValidation(invoiceId);
+  const { rows: creditValidations, runValidation: runCreditValidation, requestOverride: requestCreditOverride } = useInvoiceCreditValidation(invoiceId);
+  const { overallStatus: approvalOverallStatus, steps: approvalSteps, submitForApproval, processAction } = useInvoiceApprovals(invoiceId);
+  const { history: holdHistory, placeOnHold, releaseHold } = useInvoiceHold(invoiceId);
+  const { posting, postInvoice, retryPosting } = useInvoicePosting();
+  const { history: postingHistory } = useInvoicePostingHistory(invoiceId);
   const { push } = useToast();
   const [newNote, setNewNote] = useState('');
 
@@ -40,6 +51,38 @@ export function SalesInvoiceDetailPage() {
     const { error } = await submitInvoice(invoice.id);
     if (error) { push('error', error); return; }
     push('success', 'Invoice submitted.');
+    reload();
+  };
+
+  const handleSubmitForApproval = async () => {
+    const { error } = await submitForApproval();
+    if (error) { push('error', error); return; }
+    push('success', 'Submitted for approval — stock and credit revalidated.');
+    reload();
+  };
+
+  const handlePost = async () => {
+    if (!confirm('Post this invoice? This will deduct real stock, consume credit, and cannot be undone through editing.')) return;
+    const { data, error } = await postInvoice(invoice.id);
+    if (error) { push('error', error); reload(); return; }
+    push('success', `Invoice posted — final number ${(data as any)?.final_invoice_number ?? invoice.invoice_number}.`);
+    reload();
+  };
+
+  const handleRetryPosting = async () => {
+    const { error } = await retryPosting(invoice.id);
+    if (error) { push('error', error); reload(); return; }
+    push('success', 'Posting retried successfully.');
+    reload();
+  };
+
+  const handlePlaceOnHold = async () => {
+    const reason = prompt('Hold reason (credit_review/stock_review/price_review/tax_review/customer_issue/management_review/sync_conflict/other):', 'management_review');
+    if (!reason) return;
+    const notes = prompt('Hold notes (optional):') ?? undefined;
+    const { error } = await placeOnHold(reason, notes);
+    if (error) { push('error', error); return; }
+    push('success', 'Invoice placed on hold.');
     reload();
   };
 
@@ -72,13 +115,38 @@ export function SalesInvoiceDetailPage() {
             {invoice.status.replace(/_/g, ' ')} · {invoice.invoice_type?.label} · {invoice.customer?.business_name ?? invoice.walk_in_name ?? 'Walk-in'}
           </p>
         </div>
-        <div className="flex gap-2">
-          {(invoice.status === 'draft' || invoice.status === 'pending_submission') && (
-            <PermissionGate permission="sales_invoices:create">
-              <button className="btn-primary" onClick={handleSubmit}><Send size={16} /> Submit</button>
+        <div className="flex flex-wrap gap-2">
+          {invoice.status === 'draft' && (
+            <PermissionGate permission="sales_invoices:submit_for_approval">
+              <button className="btn-secondary" onClick={handleSubmitForApproval}><Send size={16} /> Submit for Approval</button>
             </PermissionGate>
           )}
-          {invoice.status !== 'cancelled_before_posting' && (
+          {(invoice.status === 'draft' || invoice.status === 'pending_submission') && (
+            <PermissionGate permission="sales_invoices:create">
+              <button className="btn-secondary" onClick={handleSubmit}><Send size={16} /> Submit</button>
+            </PermissionGate>
+          )}
+          {(invoice.status === 'approved' || invoice.status === 'ready_to_post') && (
+            <PermissionGate permission="sales_invoices:post_invoice">
+              <button className="btn-primary" onClick={handlePost} disabled={posting}>{posting ? 'Posting…' : 'Post Invoice'}</button>
+            </PermissionGate>
+          )}
+          {invoice.status === 'posting_failed' && (
+            <PermissionGate permission="sales_invoices:retry_failed_posting">
+              <button className="btn-primary" onClick={handleRetryPosting} disabled={posting}>{posting ? 'Retrying…' : 'Retry Posting'}</button>
+            </PermissionGate>
+          )}
+          {!invoice.is_on_hold && !['posted', 'cancelled_before_posting', 'voided'].includes(invoice.status) && (
+            <PermissionGate permission="sales_invoices:place_on_hold">
+              <button className="btn-secondary" onClick={handlePlaceOnHold}><PauseCircle size={16} /> Hold</button>
+            </PermissionGate>
+          )}
+          {invoice.is_on_hold && holdHistory.find((h) => !h.released_by) && (
+            <PermissionGate permission="sales_invoices:release_hold">
+              <button className="btn-primary" onClick={() => releaseHold(holdHistory.find((h) => !h.released_by)!.id)}><PlayCircle size={16} /> Release Hold</button>
+            </PermissionGate>
+          )}
+          {invoice.status !== 'cancelled_before_posting' && invoice.status !== 'posted' && (
             <PermissionGate permission="sales_invoices:cancel_draft">
               <button className="btn-secondary text-red-600" onClick={handleCancel}><XCircle size={16} /> Cancel Draft</button>
             </PermissionGate>
@@ -175,6 +243,129 @@ export function SalesInvoiceDetailPage() {
           <div><p className="label">Total Quantity</p><p className="font-medium">{invoice.total_quantity}</p></div>
           <div><p className="label">Free Quantity</p><p className="font-medium">{invoice.total_free_quantity}</p></div>
           <div className="col-span-2 sm:col-span-4"><p className="label">Net Amount</p><p className="text-lg font-bold">{invoice.net_amount.toFixed(2)}</p></div>
+        </div>
+      )}
+
+      {tab === 'stock' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Stock Validation</h3>
+            <PermissionGate permission="sales_invoices:validate_stock">
+              <button className="btn-secondary" onClick={runStockValidation}>Revalidate Stock</button>
+            </PermissionGate>
+          </div>
+          <div className="card overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-slate-500 dark:border-slate-700">
+                  <th className="p-3">Location</th><th className="p-3">Requested</th><th className="p-3">Available</th>
+                  <th className="p-3">Short</th><th className="p-3">Status</th><th className="p-3">Message</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stockValidations.map((v) => (
+                  <tr key={v.id} className="border-b border-slate-100 dark:border-slate-800">
+                    <td className="p-3 capitalize">{v.location_type}</td>
+                    <td className="p-3">{v.requested_base_quantity}</td>
+                    <td className="p-3">{v.available_quantity}</td>
+                    <td className="p-3">{v.short_quantity}</td>
+                    <td className="p-3 capitalize">{v.status.replace(/_/g, ' ')}</td>
+                    <td className="p-3 text-xs text-slate-500">{v.validation_message}</td>
+                  </tr>
+                ))}
+                {stockValidations.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">Not validated yet.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'credit' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold">Credit Validation</h3>
+            <PermissionGate permission="sales_invoices:validate_credit">
+              <button className="btn-secondary" onClick={runCreditValidation}>Revalidate Credit</button>
+            </PermissionGate>
+          </div>
+          <div className="space-y-2">
+            {creditValidations.map((c) => (
+              <div key={c.id} className="card p-3 text-sm">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  <div><p className="label">Available Before</p><p>{c.available_credit_before}</p></div>
+                  <div><p className="label">Invoice Amount</p><p>{c.invoice_credit_amount}</p></div>
+                  <div><p className="label">Available After</p><p>{c.available_credit_after}</p></div>
+                  <div><p className="label">Status</p><p className="capitalize">{c.status.replace(/_/g, ' ')}</p></div>
+                </div>
+                {c.block_reason && <p className="mt-1 text-amber-600">{c.block_reason}</p>}
+              </div>
+            ))}
+            {creditValidations.length === 0 && <p className="text-sm text-slate-500">Not validated yet — only applies to credit/hybrid invoices.</p>}
+          </div>
+          {creditValidations[0]?.status && !['valid', 'not_validated'].includes(creditValidations[0].status) && (
+            <PermissionGate permission="sales_invoices:request_credit_override">
+              <button className="btn-secondary" onClick={async () => {
+                const reason = prompt('Reason for requesting a credit override:');
+                if (!reason) return;
+                const { error } = await requestCreditOverride(reason);
+                if (error) push('error', error); else push('success', 'Credit override requested.');
+              }}>Request Credit Override</button>
+            </PermissionGate>
+          )}
+        </div>
+      )}
+
+      {tab === 'approvals' && (
+        <div className="space-y-4">
+          <h3 className="font-semibold">Approval Status: <span className="capitalize">{(approvalOverallStatus ?? 'not required').replace(/_/g, ' ')}</span></h3>
+          <div className="space-y-2">
+            {approvalSteps.map((s) => (
+              <div key={s.id} className="card p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium capitalize">{s.sequence}. {s.approval_type.replace(/_/g, ' ')} <span className="text-xs text-slate-500">({s.required_role})</span></p>
+                  <span className="capitalize">{s.status.replace(/_/g, ' ')}</span>
+                </div>
+                {s.status === 'pending' && (
+                  <div className="mt-2 flex gap-2">
+                    <PermissionGate permission="sales_invoices:approve_invoice">
+                      <button className="btn-secondary !py-1 text-xs text-green-600" onClick={() => processAction(s.id, 'approve')}>Approve</button>
+                    </PermissionGate>
+                    <PermissionGate permission="sales_invoices:reject_invoice">
+                      <button className="btn-secondary !py-1 text-xs text-red-600" onClick={() => {
+                        const reason = prompt('Reason for rejection:');
+                        if (reason) processAction(s.id, 'reject', reason);
+                      }}>Reject</button>
+                    </PermissionGate>
+                    <PermissionGate permission="sales_invoices:return_for_correction">
+                      <button className="btn-secondary !py-1 text-xs" onClick={() => {
+                        const reason = prompt('Reason for returning for correction:');
+                        if (reason) processAction(s.id, 'return_for_correction', reason);
+                      }}>Return for Correction</button>
+                    </PermissionGate>
+                  </div>
+                )}
+                {s.reason && <p className="mt-1 text-xs text-slate-500">Reason: {s.reason}</p>}
+              </div>
+            ))}
+            {approvalSteps.length === 0 && <p className="text-sm text-slate-500">No approval steps yet — submit for approval to evaluate triggers.</p>}
+          </div>
+        </div>
+      )}
+
+      {tab === 'posting' && (
+        <div className="space-y-2">
+          {postingHistory.map((h) => (
+            <div key={h.id} className="card p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">Attempt {h.attempt_number} — <span className={h.status === 'succeeded' ? 'text-green-600' : 'text-red-600'}>{h.status}</span></p>
+                <span className="text-xs text-slate-400">{h.online ? 'Online' : 'Offline'}</span>
+              </div>
+              {h.final_invoice_number && <p className="text-slate-500">Final number: {h.final_invoice_number}</p>}
+              {h.error_message && <p className="text-red-600">{h.error_message}</p>}
+              <p className="text-xs text-slate-400">{new Date(h.attempted_at).toLocaleString()}</p>
+            </div>
+          ))}
+          {postingHistory.length === 0 && <p className="text-sm text-slate-500">No posting attempts yet.</p>}
         </div>
       )}
 

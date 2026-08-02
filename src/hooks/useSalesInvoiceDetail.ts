@@ -18,6 +18,7 @@ export interface SalesInvoiceDetail {
   direct_invoice_source: string | null;
   currency: string;
   payment_type: string;
+  is_on_hold: boolean;
   delivery_date: string | null;
   tax_inclusive: boolean;
   round_off_rule: string;

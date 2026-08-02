@@ -11,10 +11,22 @@ import type { SalesInvoiceRow } from '@/hooks/useSalesInvoices';
 
 const STATUS_STYLES: Record<SalesInvoiceStatus, string> = {
   draft: 'bg-slate-100 text-slate-600 dark:bg-slate-800',
+  pending_validation: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
+  validation_failed: 'bg-red-100 text-red-700 dark:bg-red-900/30',
   pending_submission: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
+  pending_approval: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
+  partially_approved: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30',
   submitted: 'bg-green-100 text-green-700 dark:bg-green-900/30',
   returned_for_correction: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  on_hold: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30',
+  ready_to_post: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30',
+  posting: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30',
+  posted: 'bg-emerald-200 text-emerald-800 dark:bg-emerald-900/50',
+  posting_failed: 'bg-red-100 text-red-700 dark:bg-red-900/30',
   cancelled_before_posting: 'bg-red-100 text-red-700 dark:bg-red-900/30',
+  void_requested: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
+  voided: 'bg-slate-200 text-slate-500 dark:bg-slate-700',
   expired: 'bg-slate-200 text-slate-500 dark:bg-slate-700',
   sync_pending: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
   sync_failed: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
@@ -121,7 +133,7 @@ export function SalesInvoicesListPage() {
           <label className="label">Status</label>
           <select className="input" value={status} onChange={(e) => setStatus(e.target.value as SalesInvoiceStatus | '')}>
             <option value="">All</option>
-            {(['draft', 'pending_submission', 'submitted', 'returned_for_correction', 'cancelled_before_posting', 'expired', 'sync_pending', 'sync_failed', 'conflict'] as SalesInvoiceStatus[]).map((s) => (
+            {(['draft', 'pending_approval', 'approved', 'ready_to_post', 'posted', 'posting_failed', 'on_hold', 'cancelled_before_posting', 'sync_pending', 'sync_failed', 'conflict'] as SalesInvoiceStatus[]).map((s) => (
               <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
             ))}
           </select>

@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0064). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0075). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,97 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 5B.1 Part 2: Stock Posting, Credit Posting, Invoice Approvals, Final Invoice Posting, Printing, Offline Invoice Control
+
+10 migrations, ~1,600 lines. This phase turns Part 1's draft invoices
+into real, posted transactions — actual stock deduction, actual credit
+consumption, an actual customer ledger entry.
+
+**Reused, not duplicated** — the doc's own instruction, followed
+concretely: `stock_movements` (Phase 1, `movement_type='sale_out'`) for
+every stock movement this phase creates; `allocate_stock_fifo()` and
+`calculate_available_to_promise()` (5A.2 Part 2) for FIFO/FEFO and stock
+validation — no second allocator; `validate_customer_credit()`/
+`customer_available_credit()` (4A.2 Part 1) for credit checks — no
+second credit engine; `sales_order_stock_reservations`/
+`sales_order_credit_reservations` (5A.2 Part 2) are *consumed* here, not
+re-implemented. **Key finding mid-build**: the doc's required
+`customer_balance_transactions` table would have exactly duplicated the
+already-existing `customer_ledger_transactions` (4A.2 Part 2), which
+already supports `transaction_type='sales_invoice'` and already has a
+trigger (`apply_ledger_transaction()`, live since migration 0037) that
+automatically maintains `customer_ledger.current_balance` on insert.
+Posting an invoice writes one row there and lets that trigger do the
+balance math — a second manual `UPDATE customer_ledger` would have
+double-counted the balance, and this was caught and fixed before it
+shipped by actually reading that table's real column names (`debit`/
+`credit`/`description`, not the `debit_amount`/`credit_amount`/`notes`
+first guessed from the table name alone). For printing, reused
+`print_settings` (3B.3) for template config (logo, paper size, footer,
+terms) rather than a new template table — only built the invoice-specific
+original/duplicate/reprint tracking that the existing generic `print_logs`
+didn't have.
+
+**Database** (migrations 0066–0075): extended `sales_invoices.status` to
+the full 21-state Part 2 model with a centralized transition function
+(held/cancelled/posted invoices can't be re-posted). Stock validation
+against real ATP or the linked order reservation. Stock allocation that
+performs **real physical deduction** — `warehouse_stock`/
+`van_stock.quantity` itself, not just `reserved_quantity` the way 5A.2
+Part 2's reservation layer did — consuming an existing order reservation's
+batch/serial breakdown when linked, or going through FIFO/FEFO directly
+otherwise. Credit validation and reservation consumption, with credit
+override requests enforcing separation of duties. A multi-level invoice
+approval workflow with real trigger evaluation (credit, price/discount
+override, high-value, stock-short, manual numbering), and — the part
+Part 1 explicitly deferred — price/discount/free-quantity override
+*approval* that actually applies the approved value to the invoice item
+and recomputes totals. Invoice hold/release. **`post_sales_invoice()`**:
+the atomic centerpiece — re-validates stock/credit/approval against
+current state (never trusts an earlier snapshot), generates the final
+invoice number, allocates stock per item, creates `stock_movements`
+rows, consumes the credit reservation and posts the ledger transaction,
+and marks the invoice posted, all inside one `begin...exception` block
+so any failure rolls back everything automatically — PL/pgSQL's
+exception block is an implicit savepoint, so this needed no manual
+transaction management to satisfy the doc's "if any step fails, rollback
+everything" requirement. Due date calculation, retry-failed-posting,
+void request foundation (snapshot-only, no reversal — reversal is
+explicitly deferred to Sales Returns/Credit Notes), cancel-before-posting
+extended to cancel pending approvals too. Invoice-specific print history/
+error tracking. Controlled offline van posting — device/van/employee
+exclusivity checks, an idempotent `reconcile_offline_van_posting()` that
+calls `post_sales_invoice()` itself rather than a second posting path.
+Sync conflict types extended to the fuller Part 2 list (stock, batch,
+serial, credit, reservation, device-assignment, already-posted) with
+`revalidate_synced_invoice()` checking all of them. 32-action permission
+module, audit triggers on all 16 new tables, dashboard widgets excluding
+drafts from any "finalized revenue" figure, notifications for the 20
+named triggers via `*_notified()` wrappers.
+
+**Client**: `SalesInvoiceDetailPage` extended with four new tabs (Stock,
+Credit, Approvals, Posting) plus Submit-for-Approval/Post/Retry/Hold
+buttons wired to the real functions above — posting shows a confirmation
+before deducting real stock, and a failed posting attempt surfaces its
+error and a Retry button rather than silently disappearing.
+
+**Honest gaps**:
+- No thermal/A4 print rendering — the print history/error tracking
+  functions (`record_invoice_print()`, `record_invoice_print_error()`)
+  exist and are callable, but no actual print template UI or physical
+  print flow was built this pass.
+- No controlled-offline-posting UI — `check_offline_posting_eligibility()`
+  and `reconcile_offline_van_posting()` exist server-side; no client
+  screen surfaces the eligibility check or triggers a local posting flow.
+- No sync-conflict-resolution UI update for the new Part 2 conflict
+  types (the existing `SyncConflictsPage` from 5A.2 Part 2 handles
+  order conflicts; invoice conflicts have no equivalent page yet).
+- No Reports UI for this phase's 30 named reports.
+- No void-request UI (the RPCs exist; nothing surfaces pending requests
+  or a request-void action).
+- Manual batch/serial override during posting isn't exposed — allocation
+  always runs its default FIFO/FEFO/reservation-consumption path.
 
 ## Phase 5B.1 Part 1: Sales Invoice Creation, POS Billing, Invoice Entry, Order-to-Invoice Conversion, Mobile & PDT Billing
 
