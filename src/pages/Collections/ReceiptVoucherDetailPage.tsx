@@ -1,17 +1,22 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, ClipboardList, CreditCard, ListChecks, StickyNote, History as HistoryIcon, XCircle } from 'lucide-react';
+import { ArrowLeft, Send, ClipboardList, CreditCard, ListChecks, StickyNote, History as HistoryIcon, XCircle, ShieldCheck, Landmark, PauseCircle, PlayCircle, Undo2 } from 'lucide-react';
 import { useReceiptVoucherDetail, useReceiptNotes, useReceiptStatusHistory } from '@/hooks/useReceiptVoucherDetail';
 import { useReceiptVouchers } from '@/hooks/useReceiptVouchers';
+import { useReceiptApprovals, useReceiptHold, useReceiptPosting, useReceiptPostingHistory, useReceiptReversal } from '@/hooks/useReceiptPosting';
+import { useReceiptCheques } from '@/hooks/useReceiptCheques';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
-type Tab = 'overview' | 'components' | 'allocations' | 'notes' | 'audit';
+type Tab = 'overview' | 'components' | 'allocations' | 'approvals' | 'cheques' | 'posting' | 'notes' | 'audit';
 
 const TABS: { key: Tab; label: string; icon: any }[] = [
   { key: 'overview', label: 'Overview', icon: ClipboardList },
   { key: 'components', label: 'Payment Components', icon: CreditCard },
   { key: 'allocations', label: 'Invoice Allocations', icon: ListChecks },
+  { key: 'approvals', label: 'Approvals', icon: ShieldCheck },
+  { key: 'cheques', label: 'Cheques', icon: Landmark },
+  { key: 'posting', label: 'Posting', icon: HistoryIcon },
   { key: 'notes', label: 'Notes', icon: StickyNote },
   { key: 'audit', label: 'Audit History', icon: HistoryIcon },
 ];
@@ -24,6 +29,12 @@ export function ReceiptVoucherDetailPage() {
   const { notes, addNote } = useReceiptNotes(receiptId);
   const { history } = useReceiptStatusHistory(receiptId);
   const { submitReceipt, cancelReceipt } = useReceiptVouchers();
+  const { overallStatus: approvalOverallStatus, steps: approvalSteps, submitForApproval, processAction } = useReceiptApprovals(receiptId);
+  const { history: holdHistory, placeOnHold, releaseHold } = useReceiptHold(receiptId);
+  const { posting, postReceipt, retryPosting } = useReceiptPosting();
+  const { history: postingHistory } = useReceiptPostingHistory(receiptId);
+  const { request: reversalRequest, createReversalRequest } = useReceiptReversal(receiptId);
+  const { cheques, verify: verifyCheque, clear: clearCheque, returnCheque } = useReceiptCheques(receiptId);
   const { push } = useToast();
   const [newNote, setNewNote] = useState('');
 
@@ -33,6 +44,47 @@ export function ReceiptVoucherDetailPage() {
     const { error } = await submitReceipt(receipt.id);
     if (error) { push('error', error); return; }
     push('success', 'Receipt submitted.');
+    reload();
+  };
+
+  const handleSubmitForApproval = async () => {
+    const { error } = await submitForApproval();
+    if (error) { push('error', error); return; }
+    push('success', 'Submitted for approval.');
+    reload();
+  };
+
+  const handlePost = async () => {
+    if (!confirm('Post this receipt? This will settle invoices, reduce the customer balance, and cannot be undone through editing.')) return;
+    const { data, error } = await postReceipt(receipt.id);
+    if (error) { push('error', error); reload(); return; }
+    push('success', `Receipt posted — final number ${(data as any)?.final_receipt_number ?? receipt.receipt_number}.`);
+    reload();
+  };
+
+  const handleRetryPosting = async () => {
+    const { error } = await retryPosting(receipt.id);
+    if (error) { push('error', error); reload(); return; }
+    push('success', 'Posting retried successfully.');
+    reload();
+  };
+
+  const handlePlaceOnHold = async () => {
+    const reason = prompt('Hold reason (duplicate_payment_review/cheque_verification/bank_transfer_verification/card_verification/customer_dispute/allocation_issue/currency_issue/management_review/sync_conflict/other):', 'management_review');
+    if (!reason) return;
+    const notes = prompt('Hold notes (optional):') ?? undefined;
+    const { error } = await placeOnHold(reason, notes);
+    if (error) { push('error', error); return; }
+    push('success', 'Receipt placed on hold.');
+    reload();
+  };
+
+  const handleRequestReversal = async () => {
+    const reason = prompt('Reason for requesting a reversal of this posted receipt:');
+    if (!reason) return;
+    const { error } = await createReversalRequest(reason);
+    if (error) { push('error', error); return; }
+    push('success', 'Reversal request submitted.');
     reload();
   };
 
@@ -65,13 +117,43 @@ export function ReceiptVoucherDetailPage() {
             {receipt.status.replace(/_/g, ' ')} · {receipt.collection_type?.label} · {receipt.customer?.business_name}
           </p>
         </div>
-        <div className="flex gap-2">
-          {(receipt.status === 'draft' || receipt.status === 'pending_submission') && (
-            <PermissionGate permission="receipt_vouchers:create">
-              <button className="btn-primary" onClick={handleSubmit}><Send size={16} /> Submit</button>
+        <div className="flex flex-wrap gap-2">
+          {receipt.status === 'draft' && (
+            <PermissionGate permission="receipt_vouchers:submit_for_approval">
+              <button className="btn-secondary" onClick={handleSubmitForApproval}><Send size={16} /> Submit for Approval</button>
             </PermissionGate>
           )}
-          {receipt.status !== 'cancelled_before_posting' && (
+          {(receipt.status === 'draft' || receipt.status === 'pending_submission') && (
+            <PermissionGate permission="receipt_vouchers:create">
+              <button className="btn-secondary" onClick={handleSubmit}><Send size={16} /> Submit</button>
+            </PermissionGate>
+          )}
+          {(receipt.status === 'approved' || receipt.status === 'ready_to_post') && (
+            <PermissionGate permission="receipt_vouchers:post_receipt">
+              <button className="btn-primary" onClick={handlePost} disabled={posting}>{posting ? 'Posting…' : 'Post Receipt'}</button>
+            </PermissionGate>
+          )}
+          {receipt.status === 'posting_failed' && (
+            <PermissionGate permission="receipt_vouchers:retry_posting">
+              <button className="btn-primary" onClick={handleRetryPosting} disabled={posting}>{posting ? 'Retrying…' : 'Retry Posting'}</button>
+            </PermissionGate>
+          )}
+          {!receipt.is_on_hold && !['posted', 'partially_allocated', 'fully_allocated', 'unallocated', 'advance', 'cancelled_before_posting', 'reversed'].includes(receipt.status) && (
+            <PermissionGate permission="receipt_vouchers:place_on_hold">
+              <button className="btn-secondary" onClick={handlePlaceOnHold}><PauseCircle size={16} /> Hold</button>
+            </PermissionGate>
+          )}
+          {receipt.is_on_hold && holdHistory.find((h) => !h.released_by) && (
+            <PermissionGate permission="receipt_vouchers:release_hold">
+              <button className="btn-primary" onClick={() => releaseHold(holdHistory.find((h) => !h.released_by)!.id)}><PlayCircle size={16} /> Release Hold</button>
+            </PermissionGate>
+          )}
+          {['posted', 'partially_allocated', 'fully_allocated', 'unallocated', 'advance'].includes(receipt.status) && !reversalRequest && (
+            <PermissionGate permission="receipt_vouchers:request_reversal">
+              <button className="btn-secondary text-red-600" onClick={handleRequestReversal}><Undo2 size={16} /> Request Reversal</button>
+            </PermissionGate>
+          )}
+          {receipt.status !== 'cancelled_before_posting' && !['posted', 'partially_allocated', 'fully_allocated', 'unallocated', 'advance', 'reversed'].includes(receipt.status) && (
             <PermissionGate permission="receipt_vouchers:cancel_draft">
               <button className="btn-secondary text-red-600" onClick={handleCancel}><XCircle size={16} /> Cancel Draft</button>
             </PermissionGate>
@@ -154,6 +236,103 @@ export function ReceiptVoucherDetailPage() {
               {allocations.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">No invoice allocations — this receipt is advance or unallocated.</td></tr>}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {tab === 'approvals' && (
+        <div className="space-y-4">
+          <h3 className="font-semibold">Approval Status: <span className="capitalize">{(approvalOverallStatus ?? 'not required').replace(/_/g, ' ')}</span></h3>
+          <div className="space-y-2">
+            {approvalSteps.map((s) => (
+              <div key={s.id} className="card p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium capitalize">{s.sequence}. {s.approval_type.replace(/_/g, ' ')} <span className="text-xs text-slate-500">({s.required_role})</span></p>
+                  <span className="capitalize">{s.status.replace(/_/g, ' ')}</span>
+                </div>
+                {s.status === 'pending' && (
+                  <div className="mt-2 flex gap-2">
+                    <PermissionGate permission="receipt_vouchers:approve_receipt">
+                      <button className="btn-secondary !py-1 text-xs text-green-600" onClick={() => processAction(s.id, 'approve')}>Approve</button>
+                    </PermissionGate>
+                    <PermissionGate permission="receipt_vouchers:reject_receipt">
+                      <button className="btn-secondary !py-1 text-xs text-red-600" onClick={() => {
+                        const reason = prompt('Reason for rejection:');
+                        if (reason) processAction(s.id, 'reject', reason);
+                      }}>Reject</button>
+                    </PermissionGate>
+                    <PermissionGate permission="receipt_vouchers:return_for_correction">
+                      <button className="btn-secondary !py-1 text-xs" onClick={() => {
+                        const reason = prompt('Reason for returning for correction:');
+                        if (reason) processAction(s.id, 'return_for_correction', reason);
+                      }}>Return for Correction</button>
+                    </PermissionGate>
+                  </div>
+                )}
+                {s.reason && <p className="mt-1 text-xs text-slate-500">Reason: {s.reason}</p>}
+              </div>
+            ))}
+            {approvalSteps.length === 0 && <p className="text-sm text-slate-500">No approval steps yet — submit for approval to evaluate triggers.</p>}
+          </div>
+        </div>
+      )}
+
+      {tab === 'cheques' && (
+        <div className="space-y-2">
+          {cheques.map((c) => (
+            <div key={c.payment_component_id} className="card p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">{c.cheque_number} — {c.bank_name}</p>
+                <span className="capitalize">{c.cheque_status.replace(/_/g, ' ')}</span>
+              </div>
+              <p className="text-xs text-slate-500">Amount {c.amount.toFixed(2)} · Cheque Date {c.cheque_date} {c.is_post_dated && '· Post-Dated'}</p>
+              {c.verification_notes && <p className="mt-1 text-xs text-slate-500">Notes: {c.verification_notes}</p>}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {c.cheque_status === 'pending_verification' && (
+                  <PermissionGate permission="receipt_vouchers:verify_cheque">
+                    <button className="btn-secondary !py-1 text-xs text-green-600" onClick={() => verifyCheque(c.payment_component_id, true)}>Verify</button>
+                    <button className="btn-secondary !py-1 text-xs text-red-600" onClick={() => {
+                      const notes = prompt('Reason for rejecting verification:');
+                      if (notes) verifyCheque(c.payment_component_id, false, notes);
+                    }}>Reject</button>
+                  </PermissionGate>
+                )}
+                {['verified', 'deposited'].includes(c.cheque_status) && (
+                  <PermissionGate permission="receipt_vouchers:mark_cheque_cleared">
+                    <button className="btn-secondary !py-1 text-xs" onClick={() => {
+                      const ref = prompt('Bank reference (optional):') ?? undefined;
+                      clearCheque(c.payment_component_id, ref);
+                    }}>Mark Cleared</button>
+                  </PermissionGate>
+                )}
+                {!['returned', 'cleared', 'cancelled', 'replaced'].includes(c.cheque_status) && (
+                  <PermissionGate permission="receipt_vouchers:mark_cheque_returned">
+                    <button className="btn-secondary !py-1 text-xs text-red-600" onClick={() => {
+                      const reason = prompt('Return reason (insufficient_funds/signature_mismatch/account_closed/payment_stopped/date_error/amount_mismatch/technical_return/other):', 'insufficient_funds');
+                      if (reason) returnCheque(c.payment_component_id, reason);
+                    }}>Mark Returned</button>
+                  </PermissionGate>
+                )}
+              </div>
+            </div>
+          ))}
+          {cheques.length === 0 && <p className="text-sm text-slate-500">No cheque payment components on this receipt.</p>}
+        </div>
+      )}
+
+      {tab === 'posting' && (
+        <div className="space-y-2">
+          {postingHistory.map((h) => (
+            <div key={h.id} className="card p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <p className="font-medium">Attempt {h.attempt_number} — <span className={h.status === 'succeeded' ? 'text-green-600' : 'text-red-600'}>{h.status}</span></p>
+                <span className="text-xs text-slate-400">{h.online ? 'Online' : 'Offline'}</span>
+              </div>
+              {h.final_receipt_number && <p className="text-slate-500">Final number: {h.final_receipt_number}</p>}
+              {h.error_message && <p className="text-red-600">{h.error_message}</p>}
+              <p className="text-xs text-slate-400">{new Date(h.attempted_at).toLocaleString()}</p>
+            </div>
+          ))}
+          {postingHistory.length === 0 && <p className="text-sm text-slate-500">No posting attempts yet.</p>}
         </div>
       )}
 

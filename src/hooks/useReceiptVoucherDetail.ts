@@ -20,6 +20,7 @@ export interface ReceiptVoucherDetail {
   internal_notes: string | null;
   currency: string;
   collection_source: string;
+  is_on_hold: boolean;
   customer_id: string;
   customer: { customer_code: string; business_name: string } | null;
   collection_type: { code: string; label: string } | null;

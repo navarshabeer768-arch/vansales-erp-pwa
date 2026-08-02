@@ -3,8 +3,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 export type ReceiptStatus =
-  | 'draft' | 'pending_submission' | 'submitted' | 'returned_for_correction' | 'cancelled_before_posting'
-  | 'expired' | 'sync_pending' | 'sync_failed' | 'conflict';
+  | 'draft' | 'pending_validation' | 'validation_failed' | 'pending_submission' | 'pending_approval' | 'approved'
+  | 'returned_for_correction' | 'on_hold' | 'ready_to_post' | 'posting' | 'posting_failed' | 'posted' | 'partially_allocated'
+  | 'fully_allocated' | 'unallocated' | 'advance' | 'cancelled_before_posting' | 'reversal_requested' | 'reversed'
+  | 'sync_pending' | 'sync_failed' | 'conflict' | 'submitted' | 'expired';
 
 export interface ReceiptVoucherRow {
   id: string;

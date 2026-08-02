@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0080). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0090). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,92 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 5B.2 Part 2: Receipt Posting, Customer Balance Settlement, Invoice Allocation, Advance Payments, Cheque Control, Collection Approvals, Reversals, Receipt Printing, Offline Revalidation
+
+10 migrations, ~1,926 lines, plus a working client layer. This phase
+turns Part 1's draft receipt vouchers into real, posted collections —
+actual invoice settlement, actual customer balance reduction, a real
+cheque lifecycle, and controlled reversal.
+
+**Key finding, documented in the migrations themselves**: `customer_ledger.current_balance`
+is auto-maintained by a trigger (`apply_ledger_transaction()`, live
+since 4A.2 Part 2), but `customers.outstanding_balance` — the column
+the existing credit engine (`customer_available_credit()`/
+`validate_customer_credit()`) has actually read since Phase 1 — is a
+**separate column that trigger never touches**. Every balance-changing
+function in this phase (`post_receipt()`, `allocate_customer_advance()`,
+`allocate_unallocated_credit()`, `return_cheque()`,
+`execute_receipt_reversal()`) writes both explicitly: an entry into
+`customer_ledger_transactions` (reusing the existing `'collection'`
+transaction type) for history, and a direct adjustment to
+`customers.outstanding_balance` so the credit engine sees the payment
+immediately. `sales_invoices.payment_status`/`paid_amount`/
+`settlement_date` were genuinely missing and added as columns, not
+tables. Part 1's `cheque_receipt_details` was extended with lifecycle
+fields rather than duplicated into a second `cheque_receipts` table.
+
+**Database** (migrations 0081–0090): the full 22-state receipt status
+model with a centralized transition function. `revalidate_invoice_allocation()`
+row-locks the invoice and never trusts the Part 1 draft snapshot —
+`post_invoice_allocation()` creates the permanent `posted_receipt_allocations`
+record and correctly distinguishes partial (`partially_paid`) from full
+(`paid`) settlement. Full advance-payment and unallocated-credit balance
+tracking with later-allocation functions. A collection approval workflow
+with real trigger evaluation (high-value cash, cheque, post-dated
+cheque, unverified bank, unauthorized card, advance, unallocated,
+backdated/future-dated, blocked customer, unassigned route, offline).
+Receipt hold/release. Payment-method posting records (cash/card/bank/
+digital), including parsing the Part 1 entry page's denomination note
+back into structured `cash_denomination_records` rows. A full cheque
+lifecycle — verification, deposit batches, clearance, and an atomic
+`return_cheque()` that reopens whatever invoice outstanding the cheque
+had settled and restores the customer balance. **`post_receipt()`**: the
+atomic centerpiece, wrapped in `begin...exception` so any failure rolls
+back every posted component, allocation, and ledger entry automatically.
+Receipt reversal — request/approval plus an atomic `execute_receipt_reversal()`
+that reopens invoices, reverses advance/unallocated balances, and writes
+an offsetting ledger entry, never deleting the original posting records.
+Duplicate-match audit trail, controlled offline posting mirroring the
+invoice pattern, receipt printing reusing the existing print
+infrastructure, a 28-action permission module, audit triggers on 24
+tables, and dashboard/notifications extending the full prior widget set.
+
+**A real bug was caught by the TypeScript compiler and fixed before
+shipping**: `post_receipt()`'s exception handler writes
+`status = 'posting_failed'` to `receipt_vouchers`, but the status check
+constraint in the same migration set didn't originally include that
+value — a check-constraint violation waiting to happen the first time a
+posting attempt failed. Caught because the frontend's `ReceiptStatus`
+type (which is meant to mirror the constraint) didn't include it either,
+and `tsc` flagged the resulting comparison as an impossible type overlap.
+Fixed by adding `'posting_failed'` to the constraint.
+
+**Client**: `ReceiptVoucherDetailPage` extended with four new tabs
+(Approvals, Cheques, Posting, plus the reversal request surfaced in the
+header) and Submit-for-Approval/Post/Retry/Hold/Request-Reversal
+buttons — posting shows a confirmation before settling invoices and
+reducing the customer balance, cheques can be verified/cleared/returned
+inline, and a failed posting attempt surfaces its error with a Retry
+button.
+
+**Honest gaps**:
+- No reversal-approval queue page (the RPC `execute_receipt_reversal()`
+  exists and is callable; nothing yet surfaces pending reversal requests
+  for a supervisor to decide, mirroring the invoice void-request queue).
+- No cheque deposit-batch UI (`create_cheque_deposit_batch()` exists;
+  no screen groups cheques into a batch and submits it).
+- No advance/unallocated-credit later-allocation UI — the functions
+  exist and are callable, but nothing surfaces a customer's available
+  advance/unallocated balances with an "allocate now" action.
+- No controlled-offline-posting UI (mirrors the same gap noted for
+  invoices — server functions exist, no client screen).
+- No print rendering wired up yet for receipts specifically (the
+  invoice `PrintInvoiceModal` pattern could be mirrored but wasn't this
+  pass).
+- No Reports UI for this phase's reports.
+- No cheque replacement UI (`replace_cheque()` exists; no screen links
+  a returned cheque to its replacement payment).
 
 ## Phase 5B.2 Part 1: Collection Entry, Receipt Vouchers, Customer Payment Allocation, Mobile & PDT Collection Entry
 
