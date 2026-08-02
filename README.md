@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0075). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0080). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,80 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 5B.2 Part 1: Collection Entry, Receipt Vouchers, Customer Payment Allocation, Mobile & PDT Collection Entry
+
+5 migrations, ~1,184 lines, plus a working client layer.
+
+**Reused, not duplicated**: `payment_methods` (4A.2 Part 1) already had
+exactly the codes the doc wanted — cash/card/bank_transfer/cheque/
+online/wallet/credit_account — reused directly despite being listed as
+a "new table" in the doc. The existing `collections` table (Phase 1)
+does immediate single-payment collection tied to the old `sales` table
+and is completely untouched — `receipt_vouchers` is a new draft-only
+layer for the richer multi-invoice-allocation workflow tied to
+`sales_invoices`, same architectural relationship `sales_invoices` had
+to `sales` in 5B.1 Part 1. `sales_invoices.posting_status='posted'` is
+the exact eligibility filter for "outstanding invoices" — draft/
+unposted/voided invoices correctly never appear as collectible.
+`customer_visits.visit_outcome` was genuinely missing and added as a
+small column, not a new table.
+
+**Database**: `collection_types` (18 configurable types),
+`receipt_vouchers`/`receipt_payment_components`/
+`receipt_invoice_allocations` (draft-only, posting_status structurally
+locked to `'not_posted'`), structured method-specific detail tables
+(`cheque_receipt_details`, `card_receipt_details`,
+`bank_transfer_receipt_details`, `wallet_receipt_details` — not one
+unstructured text blob, per the doc's explicit instruction).
+`customer_outstanding_summary()` (full aging buckets: current/1-30/
+31-60/61-90/91-120/120+) and `customer_outstanding_invoices()`, both
+computing real outstanding as `net_amount` minus active draft
+allocations — this correctly prevents two different draft receipts from
+over-committing the same invoice without marking anything actually
+settled, since real settlement is Part 2's job.
+`calculate_allocation_preview()` (4 strategies: oldest invoice, oldest
+due date, most overdue, smallest/largest balance) as a read-only
+proposal. `create_receipt_draft()` — the atomic entry point creating the
+header, every payment component with its method-specific details, and
+every invoice allocation together, with over-allocation guards at every
+level. Draft editing (customer change correctly clears stale
+allocations), cancellation, `check_duplicate_payment_warning()`
+(matches on amount/method/reference/cheque-number/card-auth/bank-
+reference within a 7-day window — warns, never auto-rejects),
+`payment_promises` as a separate concept from receipt vouchers, offline
+sync status/conflicts, 23-action permission module, audit triggers,
+notifications. **Caught and fixed a real regression** while writing the
+dashboard-widgets migration: the first draft of the updated
+`dashboard_stats()` accidentally dropped nearly every widget from every
+earlier phase instead of appending to them — rewrote it with the full
+accumulated widget set preserved before it shipped.
+
+**Client**: new "Collections" top-level nav section. `ReceiptEntryPage`
+— customer selector with a live outstanding summary, mixed payment
+components (add/remove multiple methods per receipt, each with its own
+method-specific fields), a three-mode allocation panel (Allocate to
+Invoices with auto-allocation preview across 4 strategies plus manual
+override / Advance Payment / Unallocated Receipt), `ReceiptVouchersListPage`
+(search/filter/inline submit/cancel), `ReceiptVoucherDetailPage`
+(Overview/Payment Components/Invoice Allocations/Notes/Audit History).
+
+**Honest gaps**:
+- No dedicated Reports UI for the 16 named draft reports.
+- No PDT-specific optimizations (large touch targets, numeric keypad) —
+  same gap noted for prior mobile entry pages.
+- No cash denomination entry UI (the doc's optional 500/200/100/.../coins
+  breakdown with difference warning) — receipt amount is entered
+  directly.
+- No route-collection screen showing today's planned customers with
+  outstanding/overdue indicators — receipt entry can be launched from a
+  visit via URL params, but there's no dedicated route-collection list.
+- No payment-promise UI (the `payment_promises` table and
+  `create_payment_promise()` function exist; nothing surfaces them yet).
+- No sync-conflict resolution page for receipts (mirrors the invoice/
+  order pattern but wasn't built this pass).
+- No offline duplicate-warning UI hookup — `check_duplicate_payment_warning()`
+  exists but isn't called from the entry page yet.
 
 ## Phase 5B.1 Part 2: Stock Posting, Credit Posting, Invoice Approvals, Final Invoice Posting, Printing, Offline Invoice Control
 

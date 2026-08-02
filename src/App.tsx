@@ -47,6 +47,10 @@ import { SalesInvoiceDetailPage } from '@/pages/Sales/SalesInvoiceDetailPage';
 import { InvoiceReportsPage } from '@/pages/Sales/InvoiceReportsPage';
 import { VoidRequestsPage } from '@/pages/Sales/VoidRequestsPage';
 import { InvoiceSyncConflictsPage } from '@/pages/Sales/InvoiceSyncConflictsPage';
+import { CollectionsHomePage } from '@/pages/Collections/CollectionsHomePage';
+import { ReceiptVouchersListPage } from '@/pages/Collections/ReceiptVouchersListPage';
+import { ReceiptEntryPage } from '@/pages/Collections/ReceiptEntryPage';
+import { ReceiptVoucherDetailPage } from '@/pages/Collections/ReceiptVoucherDetailPage';
 import { CustomerMasterPage } from '@/pages/Sales/CustomerMasterPage';
 import { CreditDashboardPage } from '@/pages/Sales/CreditDashboardPage';
 import { PriceListsPage } from '@/pages/Sales/PriceListsPage';
@@ -179,6 +183,13 @@ export default function App() {
             <Route path="sales/orders/:orderId" element={<SalesOrderDetailPage />} />
             <Route path="sales/invoices/new" element={<SalesInvoiceEntryPage />} />
             <Route path="sales/invoices/:invoiceId" element={<SalesInvoiceDetailPage />} />
+
+            <Route path="collections" element={<CollectionsHomePage />}>
+              <Route index element={<Navigate to="receipts" replace />} />
+              <Route path="receipts" element={<ReceiptVouchersListPage />} />
+            </Route>
+            <Route path="collections/receipts/new" element={<ReceiptEntryPage />} />
+            <Route path="collections/receipts/:receiptId" element={<ReceiptVoucherDetailPage />} />
 
             <Route path="routes" element={<RoutesPage />} />
             <Route path="routes/beat-plans" element={<BeatPlansPage />} />

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Truck, MapPin, Users, Boxes, Warehouse, BookUser,
   ShoppingBag, Wallet, HandCoins, Undo2, Calculator, BarChart3, UserCog,
-  Radar, Settings, X, MapPinned, CalendarDays,
+  Radar, Settings, X, MapPinned, CalendarDays, Receipt,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ModuleName } from '@/types/database';
@@ -19,6 +19,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', to: '/', icon: LayoutDashboard, module: 'dashboard' },
   { label: 'Customers', to: '/customers', icon: BookUser, module: 'customers' },
   { label: 'Sales', to: '/sales', icon: ShoppingCart, module: 'sales' },
+  { label: 'Collections', to: '/collections', icon: Receipt, module: 'collections' },
   { label: 'Van Loading', to: '/van-loading', icon: Truck, module: 'van_loading' },
   { label: 'Van Unloading', to: '/van-unloading', icon: Truck, module: 'van_unloading' },
   { label: 'Route Planning', to: '/routes', icon: MapPin, module: 'route_planning' },
