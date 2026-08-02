@@ -552,23 +552,18 @@ reducing the customer balance, cheques can be verified/cleared/returned
 inline, and a failed posting attempt surfaces its error with a Retry
 button.
 
-**Honest gaps**:
-- No reversal-approval queue page (the RPC `execute_receipt_reversal()`
-  exists and is callable; nothing yet surfaces pending reversal requests
-  for a supervisor to decide, mirroring the invoice void-request queue).
-- No cheque deposit-batch UI (`create_cheque_deposit_batch()` exists;
-  no screen groups cheques into a batch and submits it).
-- No advance/unallocated-credit later-allocation UI — the functions
-  exist and are callable, but nothing surfaces a customer's available
-  advance/unallocated balances with an "allocate now" action.
-- No controlled-offline-posting UI (mirrors the same gap noted for
-  invoices — server functions exist, no client screen).
-- No print rendering wired up yet for receipts specifically (the
-  invoice `PrintInvoiceModal` pattern could be mirrored but wasn't this
-  pass).
-- No Reports UI for this phase's reports.
-- No cheque replacement UI (`replace_cheque()` exists; no screen links
-  a returned cheque to its replacement payment).
+**Follow-up pass** (same day): added `ReversalQueuePage` — a
+supervisor queue mirroring the invoice void-request pattern, approving
+calls `execute_receipt_reversal()` directly and reports how many
+invoices got reopened. Added receipt print rendering — a
+`PrintReceiptModal` reusing the exact same print infrastructure the
+invoice print modal uses (`printReceiptViaBrowser`/`Bluetooth` for
+thermal, `printDocument` for A4), with a Print button now on posted
+receipts.
+
+Remaining: no cheque deposit-batch UI, no advance/unallocated
+later-allocation UI, no controlled-offline-posting UI, no Reports UI,
+no cheque replacement UI.
 
 ## Phase 5B.2 Part 1: Collection Entry, Receipt Vouchers, Customer Payment Allocation, Mobile & PDT Collection Entry
 

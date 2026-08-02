@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, ClipboardList, CreditCard, ListChecks, StickyNote, History as HistoryIcon, XCircle, ShieldCheck, Landmark, PauseCircle, PlayCircle, Undo2 } from 'lucide-react';
+import { ArrowLeft, Send, ClipboardList, CreditCard, ListChecks, StickyNote, History as HistoryIcon, XCircle, ShieldCheck, Landmark, PauseCircle, PlayCircle, Undo2, Printer } from 'lucide-react';
 import { useReceiptVoucherDetail, useReceiptNotes, useReceiptStatusHistory } from '@/hooks/useReceiptVoucherDetail';
 import { useReceiptVouchers } from '@/hooks/useReceiptVouchers';
 import { useReceiptApprovals, useReceiptHold, useReceiptPosting, useReceiptPostingHistory, useReceiptReversal } from '@/hooks/useReceiptPosting';
 import { useReceiptCheques } from '@/hooks/useReceiptCheques';
+import { PrintReceiptModal } from '@/components/collections/PrintReceiptModal';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -35,6 +36,7 @@ export function ReceiptVoucherDetailPage() {
   const { history: postingHistory } = useReceiptPostingHistory(receiptId);
   const { request: reversalRequest, createReversalRequest } = useReceiptReversal(receiptId);
   const { cheques, verify: verifyCheque, clear: clearCheque, returnCheque } = useReceiptCheques(receiptId);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
   const { push } = useToast();
   const [newNote, setNewNote] = useState('');
 
@@ -146,6 +148,11 @@ export function ReceiptVoucherDetailPage() {
           {receipt.is_on_hold && holdHistory.find((h) => !h.released_by) && (
             <PermissionGate permission="receipt_vouchers:release_hold">
               <button className="btn-primary" onClick={() => releaseHold(holdHistory.find((h) => !h.released_by)!.id)}><PlayCircle size={16} /> Release Hold</button>
+            </PermissionGate>
+          )}
+          {['posted', 'partially_allocated', 'fully_allocated', 'unallocated', 'advance'].includes(receipt.status) && (
+            <PermissionGate permission="receipt_vouchers:print_receipt">
+              <button className="btn-secondary" onClick={() => setPrintModalOpen(true)}><Printer size={16} /> Print</button>
             </PermissionGate>
           )}
           {['posted', 'partially_allocated', 'fully_allocated', 'unallocated', 'advance'].includes(receipt.status) && !reversalRequest && (
@@ -372,6 +379,8 @@ export function ReceiptVoucherDetailPage() {
           {history.length === 0 && <p className="text-sm text-slate-500">No status changes yet.</p>}
         </div>
       )}
+
+      <PrintReceiptModal open={printModalOpen} onClose={() => setPrintModalOpen(false)} receipt={receipt} components={components} allocations={allocations} />
     </div>
   );
 }

@@ -55,6 +55,7 @@ import { ReceiptSyncConflictsPage } from '@/pages/Collections/ReceiptSyncConflic
 import { PaymentPromisesPage } from '@/pages/Collections/PaymentPromisesPage';
 import { ReceiptReportsPage } from '@/pages/Collections/ReceiptReportsPage';
 import { RouteCollectionPage } from '@/pages/Collections/RouteCollectionPage';
+import { ReversalQueuePage } from '@/pages/Collections/ReversalQueuePage';
 import { CustomerMasterPage } from '@/pages/Sales/CustomerMasterPage';
 import { CreditDashboardPage } from '@/pages/Sales/CreditDashboardPage';
 import { PriceListsPage } from '@/pages/Sales/PriceListsPage';
@@ -192,6 +193,7 @@ export default function App() {
               <Route index element={<Navigate to="receipts" replace />} />
               <Route path="receipts" element={<ReceiptVouchersListPage />} />
               <Route path="route-collection" element={<RouteCollectionPage />} />
+              <Route path="reversal-requests" element={<ReversalQueuePage />} />
               <Route path="sync-conflicts" element={<ReceiptSyncConflictsPage />} />
               <Route path="payment-promises" element={<PaymentPromisesPage />} />
               <Route path="reports" element={<ReceiptReportsPage />} />
