@@ -561,9 +561,16 @@ invoice print modal uses (`printReceiptViaBrowser`/`Bluetooth` for
 thermal, `printDocument` for A4), with a Print button now on posted
 receipts.
 
-Remaining: no cheque deposit-batch UI, no advance/unallocated
-later-allocation UI, no controlled-offline-posting UI, no Reports UI,
-no cheque replacement UI.
+**Second follow-up pass** (same day): added `AdvanceUnallocatedPage` —
+lists every customer's available advance/unallocated balance from
+posted receipts with an inline "pick an invoice, enter an amount,
+allocate" action calling `allocate_customer_advance()`/
+`allocate_unallocated_credit()` directly. Added `ChequeDepositBatchPage`
+— lists verified cheques awaiting deposit, multi-select with a running
+total, and creates a batch via `create_cheque_deposit_batch()`.
+
+Remaining: no controlled-offline-posting UI, no Reports UI, no cheque
+replacement UI.
 
 ## Phase 5B.2 Part 1: Collection Entry, Receipt Vouchers, Customer Payment Allocation, Mobile & PDT Collection Entry
 

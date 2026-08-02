@@ -5,6 +5,8 @@ const TABS = [
   { to: '/collections/receipts', label: 'Receipt Vouchers', end: true },
   { to: '/collections/route-collection', label: 'Route Collection', end: false },
   { to: '/collections/reversal-requests', label: 'Reversal Requests', end: false },
+  { to: '/collections/advance-unallocated', label: 'Advance & Unallocated', end: false },
+  { to: '/collections/cheque-deposits', label: 'Cheque Deposits', end: false },
   { to: '/collections/payment-promises', label: 'Payment Promises', end: false },
   { to: '/collections/sync-conflicts', label: 'Sync Conflicts', end: false },
   { to: '/collections/reports', label: 'Reports', end: false },
