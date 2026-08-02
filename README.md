@@ -563,6 +563,23 @@ breakdown into the payment component's notes on save.
 
 Remaining: 11 of 16 reports, no PDT-specific optimizations.
 
+**Third follow-up pass** (same day): expanded `ReceiptReportsPage` from
+5 to 14 of the 16 named reports — added Invoice Allocation Draft,
+Card/Bank Transfer/Advance Payment/Unallocated Receipt/Mixed Payment/
+Route Collection/Offline Receipt Draft, and Payment Promise reports.
+Added PDT-friendly touches to `ReceiptEntryPage`: a "Full" quick-pay
+button per outstanding invoice row, 44–48px minimum touch targets on
+the amount/allocation inputs and the Save Draft/Submit buttons, and
+`inputMode="decimal"` on numeric fields so mobile keyboards default to
+the numeric pad.
+
+Remaining: 2 of 16 reports (Customer Collection Draft, Duplicate Payment
+Warning — the check itself runs live in the entry page but isn't
+aggregated into a standalone report). PDT optimizations are now partial
+(quick-pay button, larger touch targets, numeric keypad) rather than
+absent — a dedicated large-icon/minimal-animation PDT mode is still not
+built.
+
 ## Phase 5B.1 Part 2: Stock Posting, Credit Posting, Invoice Approvals, Final Invoice Posting, Printing, Offline Invoice Control
 
 10 migrations, ~1,600 lines. This phase turns Part 1's draft invoices

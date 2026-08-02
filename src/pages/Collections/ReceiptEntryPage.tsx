@@ -194,7 +194,7 @@ export function ReceiptEntryPage() {
                   <option value="online">Online Payment</option>
                   <option value="wallet">Wallet</option>
                 </select>
-                <input type="number" className="input" placeholder="Amount" value={c.amount || ''} onChange={(e) => updateComponent(idx, { amount: Number(e.target.value) })} />
+                <input type="number" inputMode="decimal" className="input !h-[44px] text-base" placeholder="Amount" value={c.amount || ''} onChange={(e) => updateComponent(idx, { amount: Number(e.target.value) })} />
                 {components.length > 1 && (
                   <button className="text-red-500" onClick={() => removeComponent(idx)}><Trash2 size={16} /></button>
                 )}
@@ -281,13 +281,20 @@ export function ReceiptEntryPage() {
             {!invoicesLoading && outstandingInvoices.length === 0 && customerId && <p className="text-sm text-slate-500">No outstanding invoices for this customer.</p>}
             <div className="max-h-72 space-y-2 overflow-y-auto">
               {outstandingInvoices.map((inv) => (
-                <div key={inv.invoice_id} className="flex items-center justify-between rounded-lg border border-slate-100 p-2 text-sm dark:border-slate-800">
-                  <div>
+                <div key={inv.invoice_id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 p-3 text-sm dark:border-slate-800">
+                  <div className="min-w-0 flex-1">
                     <p className="font-medium">{inv.invoice_number}</p>
                     <p className="text-xs text-slate-500">Due {inv.due_date ?? '—'} · {inv.overdue_days > 0 ? `${inv.overdue_days}d overdue` : 'current'} · Outstanding {inv.outstanding_amount.toFixed(2)}</p>
                   </div>
+                  <button
+                    type="button"
+                    className="min-h-[44px] whitespace-nowrap rounded-lg bg-slate-100 px-3 text-xs font-medium text-slate-700 active:bg-slate-200 dark:bg-slate-800 dark:text-slate-200"
+                    onClick={() => setManualAllocations((prev) => ({ ...prev, [inv.invoice_id]: String(inv.outstanding_amount) }))}
+                  >
+                    Full
+                  </button>
                   <input
-                    type="number" className="input !w-28" placeholder="0.00" min={0} max={inv.outstanding_amount}
+                    type="number" inputMode="decimal" className="input !h-[44px] !w-28" placeholder="0.00" min={0} max={inv.outstanding_amount}
                     value={manualAllocations[inv.invoice_id] ?? ''}
                     onChange={(e) => setManualAllocations((prev) => ({ ...prev, [inv.invoice_id]: e.target.value }))}
                   />
@@ -333,8 +340,8 @@ export function ReceiptEntryPage() {
           <p className="text-xl font-bold">{receiptAmount.toFixed(2)}</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn-secondary" onClick={() => handleSave(false)} disabled={submitting}><Save size={16} /> Save Draft</button>
-          <button className="btn-primary" onClick={() => handleSave(true)} disabled={submitting}><Send size={16} /> Submit</button>
+          <button className="btn-secondary !min-h-[48px] !px-5" onClick={() => handleSave(false)} disabled={submitting}><Save size={18} /> Save Draft</button>
+          <button className="btn-primary !min-h-[48px] !px-5" onClick={() => handleSave(true)} disabled={submitting}><Send size={18} /> Submit</button>
         </div>
       </div>
     </div>
