@@ -47,6 +47,9 @@ import { SalesInvoiceDetailPage } from '@/pages/Sales/SalesInvoiceDetailPage';
 import { InvoiceReportsPage } from '@/pages/Sales/InvoiceReportsPage';
 import { VoidRequestsPage } from '@/pages/Sales/VoidRequestsPage';
 import { InvoiceSyncConflictsPage } from '@/pages/Sales/InvoiceSyncConflictsPage';
+import { SalesReturnEntryPage } from '@/pages/Sales/SalesReturnEntryPage';
+import { SalesReturnsListPage } from '@/pages/Sales/SalesReturnsListPage';
+import { SalesReturnDetailPage } from '@/pages/Sales/SalesReturnDetailPage';
 import { CollectionsHomePage } from '@/pages/Collections/CollectionsHomePage';
 import { ReceiptVouchersListPage } from '@/pages/Collections/ReceiptVouchersListPage';
 import { ReceiptEntryPage } from '@/pages/Collections/ReceiptEntryPage';
@@ -181,6 +184,9 @@ export default function App() {
               <Route path="invoice-reports" element={<InvoiceReportsPage />} />
               <Route path="void-requests" element={<VoidRequestsPage />} />
               <Route path="invoice-sync-conflicts" element={<InvoiceSyncConflictsPage />} />
+              <Route path="returns/new" element={<SalesReturnEntryPage />} />
+              <Route path="returns" element={<SalesReturnsListPage />} />
+              <Route path="returns/:returnId" element={<SalesReturnDetailPage />} />
               <Route path="approvals" element={<ApprovalQueuePage />} />
               <Route path="reports" element={<OrderControlReportsPage />} />
               <Route path="sync-conflicts" element={<SyncConflictsPage />} />

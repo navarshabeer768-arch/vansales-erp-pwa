@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0090). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0095). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,74 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 5B.3 Part 1: Sales Return Entry, Return Validation, Damaged & Expired Return Entry, Replacement Request Foundation, Mobile & PDT Return Entry
+
+5 migrations, ~1,249 lines, plus a working client layer.
+
+**Reused, not duplicated**: the existing `returns`/`return_items` (Phase
+1) do immediate, simple approval-based returns tied to the old `sales`
+table and are completely untouched — `sales_returns` is a new draft-only
+layer tied to `sales_invoices`, the same relationship established twice
+before in this build (`sales_invoices`↔`sales`, `receipt_vouchers`↔
+`collections`). `product_uoms`/`units` (Phase 1) are reused directly for
+multi-UOM validation — no new UOM catalog. `sales_invoice_items`'
+already-stored `discount_amount`/`tax_amount`/`applied_price` are the
+source for reversal previews, computed from the **original invoice
+figures**, never current pricing or the current tax rate, per the doc's
+explicit instruction. `customer_visits.visit_outcome` was extended
+(not duplicated) with return-related values.
+
+**Database**: `sales_return_types` (18 configurable types),
+`sales_return_reasons` (17 reasons, each with its own approval/
+inspection/stock-destination/notes-required rules — not hardcoded in
+the frontend), `sales_return_conditions` (17 conditions). Core
+`sales_returns`/`sales_return_items`/`sales_return_item_batches`/
+`sales_return_item_serials` schema, draft-only with the full Part 2
+foundation columns present but unwritten. `invoice_returnable_items()`
+computing remaining returnable quantity as original invoice quantity
+minus everything already returned in an active draft — correctly
+excluding draft/unposted/voided invoices from ever appearing as
+returnable. `calculate_return_reversal_preview()` — proportional
+discount/tax reversal from the invoice item's own stored figures.
+`create_sales_return_draft()` — the atomic entry point creating header,
+items, and batch/serial breakdown together, with guards throughout
+(can't exceed remaining returnable quantity, batch quantities must sum
+to the item total, serial count must match base quantity, free-item
+mismatch caught, no duplicate serial return). `check_duplicate_return_warning()`
+(serial/batch/invoice-item/product+quantity match within 14 days,
+warns without rejecting). Replacement request foundation, return value
+override request foundation, draft editing (customer/invoice change
+clears every stale batch/serial/replacement reference), cancellation,
+offline sync + conflict detection (10 conflict types), 21-action
+permission module, audit triggers, dashboard widgets (13 new, appended
+to the full existing 80-widget set), notifications.
+
+**Client**: return entry with customer → invoice → returnable-items
+selection (checkbox per line, quantity/condition/reason per item),
+`SalesReturnsListPage`, `SalesReturnDetailPage` (Overview/Return Items/
+Batches/Serials/Pricing Preview/Notes/Audit History — the Pricing
+Preview tab explicitly notes this is a preview only, no credit note or
+balance change happens this phase).
+
+**Honest gaps**:
+- No dedicated batch/serial scanning UI in the entry page — batch and
+  serial selection can be sent through `create_sales_return_draft()`'s
+  jsonb payload, but the entry page itself doesn't yet render batch/
+  serial pickers per line (the detail page does show what was recorded).
+- No barcode/QR scan entry point wired into the return entry page.
+- No PDT-specific optimizations (large touch targets, numeric keypad) —
+  same gap noted for prior mobile entry pages before their follow-up
+  passes closed it.
+- No offline return draft UI beyond the existing offline-detection
+  banner — the entry page marks a draft `sync_pending` when offline,
+  but there's no dedicated offline queue/review screen.
+- No Reports UI for the 20 named draft reports.
+- No return-period-violation warning surfaced in the entry page (the
+  validation model supports `outside_return_period`, but nothing in the
+  UI checks or displays it yet).
+- No duplicate-return warning wired into the entry page (the function
+  exists, same pattern as receipts before their follow-up pass).
 
 ## Phase 5B.2 Part 2: Receipt Posting, Customer Balance Settlement, Invoice Allocation, Advance Payments, Cheque Control, Collection Approvals, Reversals, Receipt Printing, Offline Revalidation
 
