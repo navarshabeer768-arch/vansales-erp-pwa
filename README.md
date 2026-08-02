@@ -570,10 +570,13 @@ error and a Retry button rather than silently disappearing.
   types (the existing `SyncConflictsPage` from 5A.2 Part 2 handles
   order conflicts; invoice conflicts have no equivalent page yet).
 - No Reports UI for this phase's 30 named reports.
-- No void-request UI (the RPCs exist; nothing surfaces pending requests
-  or a request-void action).
 - Manual batch/serial override during posting isn't exposed — allocation
   always runs its default FIFO/FEFO/reservation-consumption path.
+
+**Follow-up pass** (same day): added the void-request UI — a "Request
+Void" button on posted invoices, a company-wide `VoidRequestsPage` queue
+for supervisors to approve/reject, and a void-status indicator in the
+invoice header once a request exists.
 
 ## Phase 5B.1 Part 1: Sales Invoice Creation, POS Billing, Invoice Entry, Order-to-Invoice Conversion, Mobile & PDT Billing
 

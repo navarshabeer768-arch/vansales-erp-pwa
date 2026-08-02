@@ -5,6 +5,7 @@ import { useSalesInvoiceDetail, useSalesInvoiceNotes, useSalesInvoiceStatusHisto
 import { useSalesInvoices } from '@/hooks/useSalesInvoices';
 import { useInvoiceRequests } from '@/hooks/useInvoiceRequests';
 import { useInvoiceStockValidation, useInvoiceCreditValidation, useInvoiceApprovals, useInvoiceHold, useInvoicePosting, useInvoicePostingHistory } from '@/hooks/useInvoicePosting';
+import { useInvoiceVoidRequest } from '@/hooks/useInvoiceVoidRequest';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -42,10 +43,20 @@ export function SalesInvoiceDetailPage() {
   const { history: holdHistory, placeOnHold, releaseHold } = useInvoiceHold(invoiceId);
   const { posting, postInvoice, retryPosting } = useInvoicePosting();
   const { history: postingHistory } = useInvoicePostingHistory(invoiceId);
+  const { request: voidRequest, createVoidRequest } = useInvoiceVoidRequest(invoiceId);
   const { push } = useToast();
   const [newNote, setNewNote] = useState('');
 
   if (loading || !invoice) return <p className="text-center text-slate-400">Loading…</p>;
+
+  const handleRequestVoid = async () => {
+    const reason = prompt('Reason for requesting a void of this posted invoice:');
+    if (!reason) return;
+    const { error } = await createVoidRequest(reason);
+    if (error) { push('error', error); return; }
+    push('success', 'Void request submitted.');
+    reload();
+  };
 
   const handleSubmit = async () => {
     const { error } = await submitInvoice(invoice.id);
@@ -113,6 +124,7 @@ export function SalesInvoiceDetailPage() {
           <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{invoice.invoice_number}</h1>
           <p className="text-sm capitalize text-slate-500">
             {invoice.status.replace(/_/g, ' ')} · {invoice.invoice_type?.label} · {invoice.customer?.business_name ?? invoice.walk_in_name ?? 'Walk-in'}
+            {voidRequest && <span className="ml-2 text-rose-600">· Void {voidRequest.approval_status}</span>}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -144,6 +156,11 @@ export function SalesInvoiceDetailPage() {
           {invoice.is_on_hold && holdHistory.find((h) => !h.released_by) && (
             <PermissionGate permission="sales_invoices:release_hold">
               <button className="btn-primary" onClick={() => releaseHold(holdHistory.find((h) => !h.released_by)!.id)}><PlayCircle size={16} /> Release Hold</button>
+            </PermissionGate>
+          )}
+          {invoice.status === 'posted' && !voidRequest && (
+            <PermissionGate permission="sales_invoices:request_void">
+              <button className="btn-secondary text-red-600" onClick={handleRequestVoid}><XCircle size={16} /> Request Void</button>
             </PermissionGate>
           )}
           {invoice.status !== 'cancelled_before_posting' && invoice.status !== 'posted' && (
