@@ -573,10 +573,32 @@ error and a Retry button rather than silently disappearing.
 - Manual batch/serial override during posting isn't exposed — allocation
   always runs its default FIFO/FEFO/reservation-consumption path.
 
-**Follow-up pass** (same day): added the void-request UI — a "Request
-Void" button on posted invoices, a company-wide `VoidRequestsPage` queue
-for supervisors to approve/reject, and a void-status indicator in the
-invoice header once a request exists.
+**Second follow-up pass** (same day): closed most of the remaining gaps.
+- Expanded `InvoiceReportsPage` from 5 to 12 reports — added Posted Sales
+  Invoice Register, Unposted Invoice, Invoice Approval, Posting Failure,
+  Invoice Hold, Void Request, and Invoice Stock Movement reports, all
+  built on real posted/unposted invoice data.
+- New `InvoiceSyncConflictsPage`, mirroring the Sales Order version but
+  for invoices, with the full Part 2 resolution set (replace batch,
+  replace serial, reduce quantity with approval, convert credit to cash).
+- **Print rendering** — found the app already has complete print
+  infrastructure (`printReceiptViaBrowser`/`printReceiptViaBluetooth` in
+  `bluetoothPrint.ts` for 58mm/80mm thermal, `printDocument()` in
+  `documentPrint.ts` for A4, `usePrintSettings()` reading the existing
+  `print_settings` table) built for other documents — reused all of it
+  rather than building new print logic. New `PrintInvoiceModal` offers
+  Browser Thermal, Bluetooth Thermal (when supported), and A4, logging
+  every attempt via `record_invoice_print()`/
+  `record_invoice_print_error_notified()`.
+
+Remaining: 18 of the 30 named reports (Cash/Credit/Hybrid Invoice,
+Invoice Item Draft, Route Draft, Offline Draft/Conflict, Stock
+Validation, Reservation/Batch/Serial consumption reports, Credit
+Validation/Conversion/Override, Print History, Reprint, Warehouse Sales,
+Customer Invoice, Product/Category/Brand Sales, Tax, Discount,
+Promotion), controlled-offline-posting UI (the eligibility check and
+reconciliation functions exist server-side; no client screen surfaces
+them), and manual batch/serial override during posting.
 
 ## Phase 5B.1 Part 1: Sales Invoice Creation, POS Billing, Invoice Entry, Order-to-Invoice Conversion, Mobile & PDT Billing
 

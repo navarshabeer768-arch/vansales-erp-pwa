@@ -7,6 +7,7 @@ const TABS = [
   { to: '/sales/invoices', label: 'Invoices', end: false },
   { to: '/sales/invoice-reports', label: 'Invoice Reports', end: false },
   { to: '/sales/void-requests', label: 'Void Requests', end: false },
+  { to: '/sales/invoice-sync-conflicts', label: 'Invoice Sync Conflicts', end: false },
   { to: '/sales/approvals', label: 'Approvals', end: false },
   { to: '/sales/sync-conflicts', label: 'Sync Conflicts', end: false },
   { to: '/sales/reports', label: 'Order Reports', end: false },

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, ClipboardList, Tag, Calculator, StickyNote, History as HistoryIcon, XCircle, Percent, PackageCheck, Wallet, ShieldCheck, PauseCircle, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Send, ClipboardList, Tag, Calculator, StickyNote, History as HistoryIcon, XCircle, Percent, PackageCheck, Wallet, ShieldCheck, PauseCircle, PlayCircle, Printer } from 'lucide-react';
 import { useSalesInvoiceDetail, useSalesInvoiceNotes, useSalesInvoiceStatusHistory } from '@/hooks/useSalesInvoiceDetail';
 import { useSalesInvoices } from '@/hooks/useSalesInvoices';
 import { useInvoiceRequests } from '@/hooks/useInvoiceRequests';
 import { useInvoiceStockValidation, useInvoiceCreditValidation, useInvoiceApprovals, useInvoiceHold, useInvoicePosting, useInvoicePostingHistory } from '@/hooks/useInvoicePosting';
 import { useInvoiceVoidRequest } from '@/hooks/useInvoiceVoidRequest';
+import { PrintInvoiceModal } from '@/components/sales/PrintInvoiceModal';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -44,6 +45,7 @@ export function SalesInvoiceDetailPage() {
   const { posting, postInvoice, retryPosting } = useInvoicePosting();
   const { history: postingHistory } = useInvoicePostingHistory(invoiceId);
   const { request: voidRequest, createVoidRequest } = useInvoiceVoidRequest(invoiceId);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
   const { push } = useToast();
   const [newNote, setNewNote] = useState('');
 
@@ -156,6 +158,11 @@ export function SalesInvoiceDetailPage() {
           {invoice.is_on_hold && holdHistory.find((h) => !h.released_by) && (
             <PermissionGate permission="sales_invoices:release_hold">
               <button className="btn-primary" onClick={() => releaseHold(holdHistory.find((h) => !h.released_by)!.id)}><PlayCircle size={16} /> Release Hold</button>
+            </PermissionGate>
+          )}
+          {invoice.status === 'posted' && (
+            <PermissionGate permission="sales_invoices:print_invoice">
+              <button className="btn-secondary" onClick={() => setPrintModalOpen(true)}><Printer size={16} /> Print</button>
             </PermissionGate>
           )}
           {invoice.status === 'posted' && !voidRequest && (
@@ -523,6 +530,8 @@ export function SalesInvoiceDetailPage() {
           {history.length === 0 && <p className="text-sm text-slate-500">No status changes yet.</p>}
         </div>
       )}
+
+      <PrintInvoiceModal open={printModalOpen} onClose={() => setPrintModalOpen(false)} invoice={invoice} items={items} />
     </div>
   );
 }

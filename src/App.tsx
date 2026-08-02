@@ -46,6 +46,7 @@ import { SalesInvoiceEntryPage } from '@/pages/Sales/SalesInvoiceEntryPage';
 import { SalesInvoiceDetailPage } from '@/pages/Sales/SalesInvoiceDetailPage';
 import { InvoiceReportsPage } from '@/pages/Sales/InvoiceReportsPage';
 import { VoidRequestsPage } from '@/pages/Sales/VoidRequestsPage';
+import { InvoiceSyncConflictsPage } from '@/pages/Sales/InvoiceSyncConflictsPage';
 import { CustomerMasterPage } from '@/pages/Sales/CustomerMasterPage';
 import { CreditDashboardPage } from '@/pages/Sales/CreditDashboardPage';
 import { PriceListsPage } from '@/pages/Sales/PriceListsPage';
@@ -168,6 +169,7 @@ export default function App() {
               <Route path="invoices" element={<SalesInvoicesListPage />} />
               <Route path="invoice-reports" element={<InvoiceReportsPage />} />
               <Route path="void-requests" element={<VoidRequestsPage />} />
+              <Route path="invoice-sync-conflicts" element={<InvoiceSyncConflictsPage />} />
               <Route path="approvals" element={<ApprovalQueuePage />} />
               <Route path="reports" element={<OrderControlReportsPage />} />
               <Route path="sync-conflicts" element={<SyncConflictsPage />} />
