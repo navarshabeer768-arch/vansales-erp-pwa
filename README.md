@@ -567,9 +567,16 @@ many stock movements were reversed. Added return print rendering — a
 invoices and receipts, with a Print button now on posted/accepted
 returns.
 
-Remaining: no replacement-order detail screen, no cash-refund-request
-UI, no controlled-offline-acceptance UI, no Reports UI, no credit-note-
-allocation UI.
+**Second follow-up pass** (same day): added `ReplacementOrdersPage`
+(approve/reject/mark-waiting-for-stock/mark-ready/cancel on active
+replacement orders), `CashRefundRequestsPage` (approve/reject —
+recording approval only; actual disbursement stays outside the
+system), and `CreditNoteAllocationPage` (lists posted, unallocated
+return credit notes with an inline pick-invoice/enter-amount/allocate
+action, reusing the same outstanding-invoices hook built for
+Collections).
+
+Remaining: no controlled-offline-acceptance UI, no Reports UI.
 
 ## Phase 5B.3 Part 1: Sales Return Entry, Return Validation, Damaged & Expired Return Entry, Replacement Request Foundation, Mobile & PDT Return Entry
 

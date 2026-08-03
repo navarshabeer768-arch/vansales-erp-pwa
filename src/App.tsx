@@ -53,6 +53,9 @@ import { SalesReturnDetailPage } from '@/pages/Sales/SalesReturnDetailPage';
 import { ReturnSyncConflictsPage } from '@/pages/Sales/ReturnSyncConflictsPage';
 import { ReturnReportsPage } from '@/pages/Sales/ReturnReportsPage';
 import { ReturnReversalQueuePage } from '@/pages/Sales/ReturnReversalQueuePage';
+import { ReplacementOrdersPage } from '@/pages/Sales/ReplacementOrdersPage';
+import { CashRefundRequestsPage } from '@/pages/Sales/CashRefundRequestsPage';
+import { CreditNoteAllocationPage } from '@/pages/Sales/CreditNoteAllocationPage';
 import { CollectionsHomePage } from '@/pages/Collections/CollectionsHomePage';
 import { ReceiptVouchersListPage } from '@/pages/Collections/ReceiptVouchersListPage';
 import { ReceiptEntryPage } from '@/pages/Collections/ReceiptEntryPage';
@@ -193,6 +196,9 @@ export default function App() {
               <Route path="return-sync-conflicts" element={<ReturnSyncConflictsPage />} />
               <Route path="return-reports" element={<ReturnReportsPage />} />
               <Route path="return-reversal-requests" element={<ReturnReversalQueuePage />} />
+              <Route path="replacement-orders" element={<ReplacementOrdersPage />} />
+              <Route path="cash-refund-requests" element={<CashRefundRequestsPage />} />
+              <Route path="credit-note-allocation" element={<CreditNoteAllocationPage />} />
               <Route path="approvals" element={<ApprovalQueuePage />} />
               <Route path="reports" element={<OrderControlReportsPage />} />
               <Route path="sync-conflicts" element={<SyncConflictsPage />} />
