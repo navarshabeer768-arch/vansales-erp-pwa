@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, ClipboardList, Package, Layers, Barcode, Calculator, StickyNote, History as HistoryIcon, XCircle, ShieldCheck, ClipboardCheck, Warehouse, Receipt, PauseCircle, PlayCircle, Undo2 } from 'lucide-react';
+import { ArrowLeft, Send, ClipboardList, Package, Layers, Barcode, Calculator, StickyNote, History as HistoryIcon, XCircle, ShieldCheck, ClipboardCheck, Warehouse, Receipt, PauseCircle, PlayCircle, Undo2, Printer } from 'lucide-react';
 import { useSalesReturnDetail, useSalesReturnNotes, useSalesReturnStatusHistory } from '@/hooks/useSalesReturnDetail';
 import { useSalesReturns } from '@/hooks/useSalesReturns';
 import { useReturnApprovals, useReturnHold, useReturnInspection, useReturnPosting, useReturnPostingHistory } from '@/hooks/useReturnPosting';
 import { useReturnCreditNote, useReturnReversal } from '@/hooks/useReturnCreditNoteAndReversal';
 import { useReturnCatalogs } from '@/hooks/useReturnCatalogs';
+import { PrintReturnModal } from '@/components/sales/PrintReturnModal';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -42,6 +43,7 @@ export function SalesReturnDetailPage() {
   const { creditNote, generate: generateCreditNote } = useReturnCreditNote(returnId);
   const { request: reversalRequest, createReversalRequest } = useReturnReversal(returnId);
   const { returnConditions } = useReturnCatalogs();
+  const [printModalOpen, setPrintModalOpen] = useState(false);
   const { push } = useToast();
   const [newNote, setNewNote] = useState('');
 
@@ -191,6 +193,11 @@ export function SalesReturnDetailPage() {
           {salesReturn.is_on_hold && holdHistory.find((h) => !h.released_by) && (
             <PermissionGate permission="sales_returns:release_hold">
               <button className="btn-primary" onClick={() => releaseHold(holdHistory.find((h) => !h.released_by)!.id)}><PlayCircle size={16} /> Release Hold</button>
+            </PermissionGate>
+          )}
+          {['posted', 'partially_accepted', 'replacement_pending', 'replacement_approved', 'replacement_completed', 'credit_note_pending', 'credit_note_generated'].includes(salesReturn.status) && (
+            <PermissionGate permission="sales_returns:print_return_voucher">
+              <button className="btn-secondary" onClick={() => setPrintModalOpen(true)}><Printer size={16} /> Print</button>
             </PermissionGate>
           )}
           {['posted', 'partially_accepted', 'credit_note_generated', 'replacement_pending', 'replacement_completed'].includes(salesReturn.status) && !reversalRequest && (
@@ -456,6 +463,8 @@ export function SalesReturnDetailPage() {
           {history.length === 0 && <p className="text-sm text-slate-500">No status changes yet.</p>}
         </div>
       )}
+
+      <PrintReturnModal open={printModalOpen} onClose={() => setPrintModalOpen(false)} salesReturn={salesReturn} items={items} />
     </div>
   );
 }

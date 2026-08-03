@@ -52,6 +52,7 @@ import { SalesReturnsListPage } from '@/pages/Sales/SalesReturnsListPage';
 import { SalesReturnDetailPage } from '@/pages/Sales/SalesReturnDetailPage';
 import { ReturnSyncConflictsPage } from '@/pages/Sales/ReturnSyncConflictsPage';
 import { ReturnReportsPage } from '@/pages/Sales/ReturnReportsPage';
+import { ReturnReversalQueuePage } from '@/pages/Sales/ReturnReversalQueuePage';
 import { CollectionsHomePage } from '@/pages/Collections/CollectionsHomePage';
 import { ReceiptVouchersListPage } from '@/pages/Collections/ReceiptVouchersListPage';
 import { ReceiptEntryPage } from '@/pages/Collections/ReceiptEntryPage';
@@ -191,6 +192,7 @@ export default function App() {
               <Route path="returns/:returnId" element={<SalesReturnDetailPage />} />
               <Route path="return-sync-conflicts" element={<ReturnSyncConflictsPage />} />
               <Route path="return-reports" element={<ReturnReportsPage />} />
+              <Route path="return-reversal-requests" element={<ReturnReversalQueuePage />} />
               <Route path="approvals" element={<ApprovalQueuePage />} />
               <Route path="reports" element={<OrderControlReportsPage />} />
               <Route path="sync-conflicts" element={<SyncConflictsPage />} />

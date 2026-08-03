@@ -559,20 +559,17 @@ shows a confirmation before restocking and generating credit, and a
 quick "Accept as Saleable" action on each inspection line for the
 common case.
 
-**Honest gaps**:
-- No reversal-approval queue page (mirrors the same gap noted for
-  receipts before their follow-up pass — the RPC exists and is
-  callable, nothing yet surfaces pending requests for a supervisor).
-- No replacement-order detail screen (creation/approval RPCs exist;
-  no dedicated page lists or manages replacement orders).
-- No cash-refund-request UI (`create_cash_refund_request()` exists;
-  no screen surfaces it).
-- No controlled-offline-acceptance UI.
-- No return print rendering UI (the invoice/receipt pattern could be
-  mirrored but wasn't this pass).
-- No Reports UI for this phase's reports.
-- No credit-note-allocation UI beyond the RPC (`allocate_credit_note_to_invoice()`
-  exists; nothing surfaces a customer's unallocated return credit).
+**Follow-up pass** (same day): added `ReturnReversalQueuePage` —
+supervisor queue mirroring the invoice/receipt void/reversal pattern,
+approving calls `execute_return_reversal()` directly and reports how
+many stock movements were reversed. Added return print rendering — a
+`PrintReturnModal` reusing the exact same print infrastructure as
+invoices and receipts, with a Print button now on posted/accepted
+returns.
+
+Remaining: no replacement-order detail screen, no cash-refund-request
+UI, no controlled-offline-acceptance UI, no Reports UI, no credit-note-
+allocation UI.
 
 ## Phase 5B.3 Part 1: Sales Return Entry, Return Validation, Damaged & Expired Return Entry, Replacement Request Foundation, Mobile & PDT Return Entry
 
