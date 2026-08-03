@@ -56,8 +56,8 @@ export interface SalesReturnItemDetail {
   product: { name: string; sku: string } | null;
   return_condition: { label: string } | null;
   return_reason: { label: string } | null;
-  batches?: { batch_id: string; return_quantity: number; batch?: { batch_number: string } | null }[];
-  serials?: { serial_id: string; return_status: string; serial?: { serial_number: string } | null }[];
+  batches?: { batch_id: string; return_quantity: number; batch?: { batch_no: string } | null }[];
+  serials?: { serial_id: string; return_status: string; serial?: { serial_no: string } | null }[];
 }
 
 export function useSalesReturnDetail(returnId: string | undefined) {
@@ -76,8 +76,8 @@ export function useSalesReturnDetail(returnId: string | undefined) {
       `).eq('id', returnId).single(),
       supabase.from('sales_return_items').select(`
         *, product:products(name, sku), return_condition:sales_return_conditions(label), return_reason:sales_return_reasons(label),
-        batches:sales_return_item_batches(batch_id, return_quantity, batch:batches(batch_number)),
-        serials:sales_return_item_serials(serial_id, return_status, serial:product_serials(serial_number))
+        batches:sales_return_item_batches(batch_id, return_quantity, batch:batches(batch_no)),
+        serials:sales_return_item_serials(serial_id, return_status, serial:product_serials(serial_no))
       `).eq('return_id', returnId).eq('item_status', 'active').order('sequence'),
     ]);
     setSalesReturn(returnData as unknown as SalesReturnDetail | null);

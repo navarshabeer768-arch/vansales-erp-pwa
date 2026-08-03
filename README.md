@@ -534,23 +534,23 @@ Preview tab explicitly notes this is a preview only, no credit note or
 balance change happens this phase).
 
 **Honest gaps**:
-- No dedicated batch/serial scanning UI in the entry page — batch and
-  serial selection can be sent through `create_sales_return_draft()`'s
-  jsonb payload, but the entry page itself doesn't yet render batch/
-  serial pickers per line (the detail page does show what was recorded).
-- No barcode/QR scan entry point wired into the return entry page.
-- No PDT-specific optimizations (large touch targets, numeric keypad) —
-  same gap noted for prior mobile entry pages before their follow-up
-  passes closed it.
-- No offline return draft UI beyond the existing offline-detection
-  banner — the entry page marks a draft `sync_pending` when offline,
-  but there's no dedicated offline queue/review screen.
-- No Reports UI for the 20 named draft reports.
-- No return-period-violation warning surfaced in the entry page (the
-  validation model supports `outside_return_period`, but nothing in the
-  UI checks or displays it yet).
-- No duplicate-return warning wired into the entry page (the function
-  exists, same pattern as receipts before their follow-up pass).
+**Follow-up pass** (same day): **caught and fixed a real bug** in the
+detail hook/page — `batch_number`/`serial_number` were used where the
+actual columns are `batch_no`/`serial_no` (Phase 1's `batches`/
+`product_serials` tables), which would have silently rendered blank
+batch/serial numbers on every return. Wired the duplicate-return
+warning into the entry page (checks per selected line, warns with a
+confirm dialog). Added a return-period-violation warning (flags
+invoices older than 30 days with a note that approval may be required).
+Added an inline batch/serial picker per line — pulls the batches/
+serials actually sold on that invoice item (via
+`sales_invoice_stock_allocations`) rather than letting the user pick
+anything. Added `ReturnSyncConflictsPage` and `ReturnReportsPage` (7 of
+20 named reports). PDT touches: larger touch targets, numeric keypad
+inputs.
+
+Remaining: no barcode/QR scan entry point, no offline draft queue
+screen, 13 of 20 reports.
 
 ## Phase 5B.2 Part 2: Receipt Posting, Customer Balance Settlement, Invoice Allocation, Advance Payments, Cheque Control, Collection Approvals, Reversals, Receipt Printing, Offline Revalidation
 

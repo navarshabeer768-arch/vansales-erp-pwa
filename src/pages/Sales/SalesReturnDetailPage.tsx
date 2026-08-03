@@ -139,7 +139,7 @@ export function SalesReturnDetailPage() {
             <div key={i.id} className="card p-3 text-sm">
               <p className="font-medium">{i.product?.name}</p>
               {(i.batches ?? []).map((b) => (
-                <p key={b.batch_id} className="text-xs text-slate-500">Batch {b.batch?.batch_number ?? b.batch_id} — {b.return_quantity}</p>
+                <p key={b.batch_id} className="text-xs text-slate-500">Batch {b.batch?.batch_no ?? b.batch_id} — {b.return_quantity}</p>
               ))}
               {(!i.batches || i.batches.length === 0) && <p className="text-xs text-amber-600">No batch selected — batch tracking required.</p>}
             </div>
@@ -154,7 +154,7 @@ export function SalesReturnDetailPage() {
             <div key={i.id} className="card p-3 text-sm">
               <p className="font-medium">{i.product?.name}</p>
               {(i.serials ?? []).map((s) => (
-                <p key={s.serial_id} className="text-xs text-slate-500">Serial {s.serial?.serial_number ?? s.serial_id} — <span className="capitalize">{s.return_status.replace(/_/g, ' ')}</span></p>
+                <p key={s.serial_id} className="text-xs text-slate-500">Serial {s.serial?.serial_no ?? s.serial_id} — <span className="capitalize">{s.return_status.replace(/_/g, ' ')}</span></p>
               ))}
               {(!i.serials || i.serials.length === 0) && <p className="text-xs text-amber-600">No serials recorded — serial tracking required.</p>}
             </div>

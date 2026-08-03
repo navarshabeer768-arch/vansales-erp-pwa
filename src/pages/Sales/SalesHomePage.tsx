@@ -9,6 +9,8 @@ const TABS = [
   { to: '/sales/void-requests', label: 'Void Requests', end: false },
   { to: '/sales/invoice-sync-conflicts', label: 'Invoice Sync Conflicts', end: false },
   { to: '/sales/returns', label: 'Sales Returns', end: false },
+  { to: '/sales/return-sync-conflicts', label: 'Return Sync Conflicts', end: false },
+  { to: '/sales/return-reports', label: 'Return Reports', end: false },
   { to: '/sales/approvals', label: 'Approvals', end: false },
   { to: '/sales/sync-conflicts', label: 'Sync Conflicts', end: false },
   { to: '/sales/reports', label: 'Order Reports', end: false },

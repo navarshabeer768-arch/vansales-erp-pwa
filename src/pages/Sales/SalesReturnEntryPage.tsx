@@ -8,6 +8,7 @@ import { useVans } from '@/hooks/useVans';
 import { useMyVanIds } from '@/hooks/useVanAssignments';
 import { useReturnCatalogs } from '@/hooks/useReturnCatalogs';
 import { useCustomerInvoicesForReturn, useInvoiceReturnableItems } from '@/hooks/useInvoiceReturnable';
+import { useInvoiceItemSoldBatchesSerials } from '@/hooks/useInvoiceItemSoldBatchesSerials';
 import { useCreateSalesReturn, ReturnItemInput } from '@/hooks/useCreateSalesReturn';
 import { useToast } from '@/contexts/ToastContext';
 
@@ -22,6 +23,55 @@ interface DraftLine {
   isFree: boolean;
   batchRequired: boolean;
   serialRequired: boolean;
+  invoiceDate: string;
+  selectedBatches: Record<string, string>;
+  selectedSerials: string[];
+}
+
+function BatchSerialPicker({ line, onChange }: { line: DraftLine; onChange: (patch: Partial<DraftLine>) => void }) {
+  const { batches, serials, loading } = useInvoiceItemSoldBatchesSerials(line.invoiceItemId);
+  if (loading) return <p className="mt-2 text-xs text-slate-400">Loading batch/serial info…</p>;
+  if (!line.batchRequired && !line.serialRequired) return null;
+
+  return (
+    <div className="mt-2 rounded-lg border border-slate-100 p-2 dark:border-slate-800">
+      {line.batchRequired && (
+        <div>
+          <p className="text-xs font-medium text-slate-500">Select batch quantities (sold on this invoice):</p>
+          {batches.map((b) => (
+            <div key={b.batch_id} className="mt-1 flex items-center gap-2 text-xs">
+              <span className="w-32">{b.batch_no}{b.expiry_date && ` (exp ${b.expiry_date})`}</span>
+              <input
+                type="number" min={0} max={b.allocated_quantity} className="input !w-20 !py-1"
+                value={line.selectedBatches[b.batch_id] ?? ''}
+                onChange={(e) => onChange({ selectedBatches: { ...line.selectedBatches, [b.batch_id]: e.target.value } })}
+              />
+            </div>
+          ))}
+          {batches.length === 0 && <p className="text-xs text-amber-600">No batch allocation found for this invoice item.</p>}
+        </div>
+      )}
+      {line.serialRequired && (
+        <div className="mt-2">
+          <p className="text-xs font-medium text-slate-500">Select serials to return:</p>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {serials.map((s) => (
+              <label key={s.serial_id} className="flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-xs dark:border-slate-700">
+                <input
+                  type="checkbox" checked={line.selectedSerials.includes(s.serial_id)}
+                  onChange={(e) => onChange({
+                    selectedSerials: e.target.checked ? [...line.selectedSerials, s.serial_id] : line.selectedSerials.filter((id) => id !== s.serial_id),
+                  })}
+                />
+                {s.serial_no}
+              </label>
+            ))}
+            {serials.length === 0 && <p className="text-xs text-amber-600">No serials found for this invoice item.</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function SalesReturnEntryPage() {
@@ -51,6 +101,9 @@ export function SalesReturnEntryPage() {
 
   const { invoices } = useCustomerInvoicesForReturn(customerId || undefined);
   const { items: returnableItems, loading: itemsLoading } = useInvoiceReturnableItems(invoiceId || undefined);
+  const selectedInvoiceDate = invoices.find((inv) => inv.id === invoiceId)?.invoice_date ?? null;
+  const daysSinceInvoice = selectedInvoiceDate ? Math.floor((Date.now() - new Date(selectedInvoiceDate).getTime()) / 86400000) : null;
+  const RETURN_PERIOD_DAYS = 30;
 
   const toggleLine = (item: (typeof returnableItems)[number], checked: boolean) => {
     setLines((prev) => {
@@ -61,6 +114,7 @@ export function SalesReturnEntryPage() {
           maxQuantity: item.remaining_returnable_quantity, returnQuantity: String(item.remaining_returnable_quantity),
           conditionCode: 'good', reasonCode: defaultReasonCode, isFree: item.is_free_item,
           batchRequired: item.batch_required, serialRequired: item.serial_required,
+          invoiceDate: selectedInvoiceDate ?? '', selectedBatches: {}, selectedSerials: [],
         };
       } else {
         delete next[item.invoice_item_id];
@@ -79,6 +133,16 @@ export function SalesReturnEntryPage() {
     if (!customerId) { push('error', 'Select a customer.'); return; }
     if (selectedLines.length === 0) { push('error', 'Select at least one item to return.'); return; }
 
+    for (const l of selectedLines) {
+      const { data: duplicates } = await supabase.rpc('check_duplicate_return_warning', {
+        p_customer_id: customerId, p_invoice_item_id: l.invoiceItemId, p_product_id: l.productId, p_return_quantity: Number(l.returnQuantity),
+      });
+      if (duplicates && duplicates.length > 0) {
+        const list = duplicates.map((d: any) => `${d.return_number} (${d.return_date}, matched on ${d.matched_on.replace(/_/g, ' ')})`).join('\n');
+        if (!confirm(`Possible duplicate return for ${l.productName}:\n${list}\n\nSave anyway?`)) return;
+      }
+    }
+
     const items: ReturnItemInput[] = selectedLines.map((l) => ({
       invoice_item_id: l.invoiceItemId,
       product_id: l.productId,
@@ -87,6 +151,8 @@ export function SalesReturnEntryPage() {
       is_free_item: l.isFree,
       condition_code: l.conditionCode,
       reason_code: l.reasonCode,
+      batches: Object.entries(l.selectedBatches).filter(([, qty]) => Number(qty) > 0).map(([batch_id, qty]) => ({ batch_id, quantity: Number(qty) })),
+      serials: l.selectedSerials,
     }));
 
     const { data, error } = await submit({
@@ -149,6 +215,11 @@ export function SalesReturnEntryPage() {
             <option value="">Select invoice…</option>
             {invoices.map((inv) => <option key={inv.id} value={inv.id}>{inv.final_invoice_number ?? inv.invoice_number} — {inv.invoice_date} — {inv.net_amount.toFixed(2)}</option>)}
           </select>
+          {daysSinceInvoice !== null && daysSinceInvoice > RETURN_PERIOD_DAYS && (
+            <p className="mt-1 text-xs font-medium text-amber-600">
+              This invoice is {daysSinceInvoice} days old — outside the standard {RETURN_PERIOD_DAYS}-day return period. This return may require additional approval.
+            </p>
+          )}
         </div>
         <div className="sm:col-span-2">
           <label className="label">Default Return Reason</label>
@@ -168,8 +239,8 @@ export function SalesReturnEntryPage() {
               const line = lines[item.invoice_item_id];
               return (
                 <div key={item.invoice_item_id} className="rounded-lg border border-slate-100 p-3 dark:border-slate-800">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={!!line} onChange={(e) => toggleLine(item, e.target.checked)} />
+                  <label className="flex items-center gap-2 py-1">
+                    <input type="checkbox" className="h-5 w-5" checked={!!line} onChange={(e) => toggleLine(item, e.target.checked)} />
                     <span className="font-medium">{item.product_name}</span>
                     <span className="text-xs text-slate-500">Remaining {item.remaining_returnable_quantity} {item.uom_label}</span>
                     {item.is_free_item && <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs text-purple-700 dark:bg-purple-900/30">Free</span>}
@@ -177,7 +248,7 @@ export function SalesReturnEntryPage() {
                   {line && (
                     <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                       <input
-                        type="number" className="input" placeholder="Quantity" min={0} max={line.maxQuantity}
+                        type="number" inputMode="decimal" className="input !h-[44px] text-base" placeholder="Quantity" min={0} max={line.maxQuantity}
                         value={line.returnQuantity} onChange={(e) => updateLine(item.invoice_item_id, { returnQuantity: e.target.value })}
                       />
                       <select className="input" value={line.conditionCode} onChange={(e) => updateLine(item.invoice_item_id, { conditionCode: e.target.value })}>
@@ -188,6 +259,7 @@ export function SalesReturnEntryPage() {
                       </select>
                     </div>
                   )}
+                  {line && <BatchSerialPicker line={line} onChange={(patch) => updateLine(item.invoice_item_id, patch)} />}
                 </div>
               );
             })}
@@ -212,8 +284,8 @@ export function SalesReturnEntryPage() {
           <p className="text-xl font-bold">{selectedLines.length}</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn-secondary" onClick={() => handleSave(false)} disabled={submitting}>Save Draft</button>
-          <button className="btn-primary" onClick={() => handleSave(true)} disabled={submitting}>Submit</button>
+          <button className="btn-secondary !min-h-[48px] !px-5" onClick={() => handleSave(false)} disabled={submitting}>Save Draft</button>
+          <button className="btn-primary !min-h-[48px] !px-5" onClick={() => handleSave(true)} disabled={submitting}>Submit</button>
         </div>
       </div>
     </div>
