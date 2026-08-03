@@ -24,6 +24,7 @@ export interface SalesReturnDetail {
   customer_complaint_reference: string | null;
   currency: string;
   return_source: string;
+  is_on_hold: boolean;
   customer_id: string;
   original_invoice_id: string | null;
   notes: string | null;

@@ -13,14 +13,34 @@ const STATUS_STYLES: Record<SalesReturnStatus, string> = {
   draft: 'bg-slate-100 text-slate-600 dark:bg-slate-800',
   pending_validation: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
   validation_failed: 'bg-red-100 text-red-700 dark:bg-red-900/30',
-  pending_submission: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
+  pending_approval: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
+  partially_approved: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30',
   submitted: 'bg-green-100 text-green-700 dark:bg-green-900/30',
   returned_for_correction: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  on_hold: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30',
+  pending_inspection: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
+  inspection_in_progress: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
+  partially_accepted: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  accepted: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30',
+  rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30',
+  ready_to_post: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30',
+  posting: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30',
+  posted: 'bg-emerald-200 text-emerald-800 dark:bg-emerald-900/50',
+  posting_failed: 'bg-red-100 text-red-700 dark:bg-red-900/30',
+  replacement_pending: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30',
+  replacement_approved: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30',
+  replacement_completed: 'bg-purple-200 text-purple-800 dark:bg-purple-900/50',
+  credit_note_pending: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30',
+  credit_note_generated: 'bg-cyan-200 text-cyan-800 dark:bg-cyan-900/50',
   cancelled_before_posting: 'bg-red-100 text-red-700 dark:bg-red-900/30',
+  reversal_requested: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
+  reversed: 'bg-slate-200 text-slate-500 dark:bg-slate-700',
   expired: 'bg-slate-200 text-slate-500 dark:bg-slate-700',
   sync_pending: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
   sync_failed: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
   conflict: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
+  pending_submission: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
 };
 
 export function SalesReturnsListPage() {
@@ -112,7 +132,7 @@ export function SalesReturnsListPage() {
           <label className="label">Status</label>
           <select className="input" value={status} onChange={(e) => setStatus(e.target.value as SalesReturnStatus | '')}>
             <option value="">All</option>
-            {(['draft', 'pending_submission', 'submitted', 'returned_for_correction', 'cancelled_before_posting', 'sync_pending', 'sync_failed', 'conflict'] as SalesReturnStatus[]).map((s) => (
+            {(['draft', 'pending_approval', 'approved', 'pending_inspection', 'partially_accepted', 'accepted', 'rejected', 'ready_to_post', 'posted', 'on_hold', 'reversal_requested', 'reversed', 'cancelled_before_posting', 'sync_pending', 'sync_failed', 'conflict'] as SalesReturnStatus[]).map((s) => (
               <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
             ))}
           </select>

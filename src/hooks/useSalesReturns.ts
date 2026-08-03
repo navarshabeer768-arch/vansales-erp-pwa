@@ -3,8 +3,12 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 export type SalesReturnStatus =
-  | 'draft' | 'pending_validation' | 'validation_failed' | 'pending_submission' | 'submitted'
-  | 'returned_for_correction' | 'cancelled_before_posting' | 'expired' | 'sync_pending' | 'sync_failed' | 'conflict';
+  | 'draft' | 'pending_validation' | 'validation_failed' | 'pending_approval' | 'partially_approved' | 'approved'
+  | 'returned_for_correction' | 'on_hold' | 'pending_inspection' | 'inspection_in_progress' | 'partially_accepted'
+  | 'accepted' | 'rejected' | 'ready_to_post' | 'posting' | 'posted' | 'posting_failed' | 'replacement_pending'
+  | 'replacement_approved' | 'replacement_completed' | 'credit_note_pending' | 'credit_note_generated'
+  | 'cancelled_before_posting' | 'reversal_requested' | 'reversed'
+  | 'sync_pending' | 'sync_failed' | 'conflict' | 'pending_submission' | 'submitted' | 'expired';
 
 export interface SalesReturnRow {
   id: string;

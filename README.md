@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0095). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0104). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,96 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 5B.3 Part 2: Return Approval, Quality Inspection, Return Stock Posting, Customer Balance Adjustment, Credit Note Generation, Replacement Workflow, Return Printing, Offline Revalidation, Reversals
+
+9 migrations, ~2,109 lines, plus a working client layer. This phase
+turns Part 1's draft returns into real, posted transactions — actual
+stock restocking (or damaged/expired/quarantine handling), actual
+customer credit, a genuine return-generated credit note, and a
+replacement order workflow.
+
+**Reused, not duplicated**: `customer_ledger_transactions` already had
+`'sales_return'` and `'credit_note'` transaction types (4A.2 Part 2) —
+reused directly for balance adjustment and credit-note posting.
+`stock_movements.movement_type` was extended with damaged/expired/
+quarantine/rejected/reversal variants rather than building a parallel
+ledger. `warehouse_stock`/`van_stock` are the exact restocking targets
+for saleable quantity — but damaged/expired/quarantine destinations are
+**deliberately never written to their `quantity` column**, only to
+`stock_movements` + the new `sales_return_stock_postings` audit table,
+since that quantity column is exactly what ATP and van-loading read
+from — this is how the doc's "quarantine stock must not be sold,
+reserved, or used in ATP" and "do not mix damaged stock into usable
+available stock" requirements are actually enforced, not just described.
+
+**Database**: the full 31-state return status model. **Quality
+inspection** — the core new concept this phase introduces —
+`sales_return_inspections`/`sales_return_inspection_items` with the
+doc's own quantity rules enforced as real CHECK constraints (accepted
+can't exceed requested, accepted+rejected can't exceed inspected), plus
+`complete_return_inspection()` rolling up real recorded quantities into
+accepted/partially_accepted/rejected. **Atomic stock posting**:
+`post_return_item_stock()` splits accepted quantity across
+saleable/damaged/expired/quarantine destinations, proportionally across
+batches when multi-batch, and updates serial status + Part 1's
+`return_status` per serial. **Customer balance adjustment + credit
+note**: `create_return_credit_adjustment()` and
+`generate_return_credit_note()` — only accepted (never rejected, never
+free-item) quantity generates financial credit, per the doc's own
+decision table. A **real cross-module consistency fix**: added
+`sales_invoices.credited_amount` and updated 5B.2 Part 2's
+`revalidate_invoice_allocation()` so a receipt can never be allocated
+against an amount a credit note already covered. `post_return()`: the
+atomic centerpiece, wrapped in `begin...exception` for automatic
+rollback. Return approval workflow with real trigger evaluation. Return
+hold/release. Full replacement order workflow — its own record type
+linked to the return, never an unrelated free Sales Order, with
+replacement invoices/deliveries scoped to link against the normal
+invoice/stock-posting controls rather than duplicating them. Reversal —
+request/approval plus an atomic `execute_return_reversal()` that
+un-restocks saleable quantity, restores the invoice's credited amount
+and customer balance, and cancels any credit note or pending
+replacement. Offline revalidation extended with the fuller Part 2
+conflict list, controlled offline acceptance (local quarantine receipt
+only, never financial posting), return printing reusing existing
+infrastructure, a 32-action permission module, audit triggers, and
+dashboard/notifications with the full prior 93-widget set verified and
+preserved before 22 new ones were appended.
+
+**Two things were caught and fixed before shipping**: the approval-
+trigger evaluator's first draft would have pushed raw return-type/reason
+codes (e.g. `'quality_complaint_return'`) directly as `approval_type`
+values, which don't match that column's check constraint — fixed by
+normalizing every trigger to a fixed enum value before the migration was
+finalized. Separately, an early draft of the final-number logic in
+`post_return()` referenced a column that was never added to the schema
+— caught during review and simplified to use the existing
+`return_number` directly, since Part 1 never distinguishes a draft
+number from a final one for returns.
+
+**Client**: `SalesReturnDetailPage` extended with five new tabs
+(Approvals, Inspection, Stock Posting, Credit Note, Posting History)
+and Submit-for-Approval/Start-Inspection/Complete-Inspection/Post/
+Retry/Hold/Generate-Credit-Note/Request-Reversal buttons — posting
+shows a confirmation before restocking and generating credit, and a
+quick "Accept as Saleable" action on each inspection line for the
+common case.
+
+**Honest gaps**:
+- No reversal-approval queue page (mirrors the same gap noted for
+  receipts before their follow-up pass — the RPC exists and is
+  callable, nothing yet surfaces pending requests for a supervisor).
+- No replacement-order detail screen (creation/approval RPCs exist;
+  no dedicated page lists or manages replacement orders).
+- No cash-refund-request UI (`create_cash_refund_request()` exists;
+  no screen surfaces it).
+- No controlled-offline-acceptance UI.
+- No return print rendering UI (the invoice/receipt pattern could be
+  mirrored but wasn't this pass).
+- No Reports UI for this phase's reports.
+- No credit-note-allocation UI beyond the RPC (`allocate_credit_note_to_invoice()`
+  exists; nothing surfaces a customer's unallocated return credit).
 
 ## Phase 5B.3 Part 1: Sales Return Entry, Return Validation, Damaged & Expired Return Entry, Replacement Request Foundation, Mobile & PDT Return Entry
 
