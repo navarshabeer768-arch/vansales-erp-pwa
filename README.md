@@ -576,7 +576,21 @@ return credit notes with an inline pick-invoice/enter-amount/allocate
 action, reusing the same outstanding-invoices hook built for
 Collections).
 
-Remaining: no controlled-offline-acceptance UI, no Reports UI.
+**Third follow-up pass** (same day): added `ReturnOfflineAcceptancePage`
+— shows the current device's offline-acceptance eligibility (reusing
+the app's existing `getDeviceId()` device-identity pattern, already
+used by the offline sync manager elsewhere in the app) and a log of
+recent offline acceptance/reconciliation activity, explicit that
+offline acceptance is a quarantine receipt only and never posts stock
+or credit locally. Expanded `ReturnReportsPage` with 4 real posted-data
+reports: Posted Sales Return Register, Return Stock Destination Report,
+Return Credit Note Report, and Replacement Order Report.
+
+At this point every gap noted across all three follow-up passes for
+this phase has been closed with working functionality; remaining
+reports (batch/serial/route/approval/inspection-specific breakdowns)
+are the same secondary-polish category noted at this stage for every
+other phase in this build.
 
 ## Phase 5B.3 Part 1: Sales Return Entry, Return Validation, Damaged & Expired Return Entry, Replacement Request Foundation, Mobile & PDT Return Entry
 

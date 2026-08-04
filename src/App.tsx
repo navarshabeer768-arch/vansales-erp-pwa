@@ -56,6 +56,7 @@ import { ReturnReversalQueuePage } from '@/pages/Sales/ReturnReversalQueuePage';
 import { ReplacementOrdersPage } from '@/pages/Sales/ReplacementOrdersPage';
 import { CashRefundRequestsPage } from '@/pages/Sales/CashRefundRequestsPage';
 import { CreditNoteAllocationPage } from '@/pages/Sales/CreditNoteAllocationPage';
+import { ReturnOfflineAcceptancePage } from '@/pages/Sales/ReturnOfflineAcceptancePage';
 import { CollectionsHomePage } from '@/pages/Collections/CollectionsHomePage';
 import { ReceiptVouchersListPage } from '@/pages/Collections/ReceiptVouchersListPage';
 import { ReceiptEntryPage } from '@/pages/Collections/ReceiptEntryPage';
@@ -199,6 +200,7 @@ export default function App() {
               <Route path="replacement-orders" element={<ReplacementOrdersPage />} />
               <Route path="cash-refund-requests" element={<CashRefundRequestsPage />} />
               <Route path="credit-note-allocation" element={<CreditNoteAllocationPage />} />
+              <Route path="return-offline-acceptance" element={<ReturnOfflineAcceptancePage />} />
               <Route path="approvals" element={<ApprovalQueuePage />} />
               <Route path="reports" element={<OrderControlReportsPage />} />
               <Route path="sync-conflicts" element={<SyncConflictsPage />} />

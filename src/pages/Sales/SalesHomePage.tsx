@@ -15,6 +15,7 @@ const TABS = [
   { to: '/sales/replacement-orders', label: 'Replacement Orders', end: false },
   { to: '/sales/cash-refund-requests', label: 'Cash Refund Requests', end: false },
   { to: '/sales/credit-note-allocation', label: 'Credit Note Allocation', end: false },
+  { to: '/sales/return-offline-acceptance', label: 'Offline Return Acceptance', end: false },
   { to: '/sales/approvals', label: 'Approvals', end: false },
   { to: '/sales/sync-conflicts', label: 'Sync Conflicts', end: false },
   { to: '/sales/reports', label: 'Order Reports', end: false },

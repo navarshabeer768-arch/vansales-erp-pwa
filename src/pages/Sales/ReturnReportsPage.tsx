@@ -2,11 +2,17 @@ import { useState } from 'react';
 import { FileBarChart } from 'lucide-react';
 import { useReturnDraftReports } from '@/hooks/useReturnDraftReports';
 import { DataTable, Column } from '@/components/ui/DataTable';
-import type { ReturnDraftRegisterRow, EmployeeReturnRow, VanReturnRow } from '@/hooks/useReturnDraftReports';
+import type {
+  ReturnDraftRegisterRow, EmployeeReturnRow, VanReturnRow, PostedReturnRow, StockDestinationRow, CreditNoteRow, ReplacementOrderRow,
+} from '@/hooks/useReturnDraftReports';
 
-type ReportKey = 'register' | 'invoice_based' | 'without_invoice' | 'damaged' | 'expired' | 'employee' | 'van';
+type ReportKey = 'register' | 'invoice_based' | 'without_invoice' | 'damaged' | 'expired' | 'employee' | 'van' | 'posted' | 'stock_destination' | 'credit_notes' | 'replacement_orders';
 
 const REPORT_OPTIONS: { key: ReportKey; label: string }[] = [
+  { key: 'posted', label: 'Posted Sales Return Register' },
+  { key: 'stock_destination', label: 'Return Stock Destination Report' },
+  { key: 'credit_notes', label: 'Return Credit Note Report' },
+  { key: 'replacement_orders', label: 'Replacement Order Report' },
   { key: 'register', label: 'Sales Return Draft Register' },
   { key: 'invoice_based', label: 'Invoice-Based Return Draft Report' },
   { key: 'without_invoice', label: 'Return Without Invoice Report' },
@@ -20,7 +26,7 @@ export function ReturnReportsPage() {
   const [report, setReport] = useState<ReportKey>('register');
   const [dateFrom, setDateFrom] = useState(new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10));
-  const { register, invoiceBased, withoutInvoice, damaged, expired, byEmployee, byVan, loading } = useReturnDraftReports(dateFrom, dateTo);
+  const { register, invoiceBased, withoutInvoice, damaged, expired, byEmployee, byVan, posted, stockDestinations, creditNotes, replacementOrders, loading } = useReturnDraftReports(dateFrom, dateTo);
 
   const registerColumns: Column<ReturnDraftRegisterRow>[] = [
     { key: 'return_number', header: 'Return #', sortValue: (r) => r.return_number },
@@ -42,6 +48,41 @@ export function ReturnReportsPage() {
     { key: 'van_name', header: 'Van' },
     { key: 'return_count', header: 'Draft Returns', sortValue: (r) => r.return_count },
     { key: 'total_amount', header: 'Total (Draft)', sortValue: (r) => r.total_amount, render: (r) => r.total_amount.toFixed(2) },
+  ];
+
+  const postedColumns: Column<PostedReturnRow>[] = [
+    { key: 'return_number', header: 'Return #', sortValue: (r) => r.return_number },
+    { key: 'return_date', header: 'Date', sortValue: (r) => r.return_date },
+    { key: 'customer_name', header: 'Customer' },
+    { key: 'return_type', header: 'Type' },
+    { key: 'status', header: 'Status', render: (r) => r.status.replace(/_/g, ' ') },
+    { key: 'net_return_amount', header: 'Net Amount', sortValue: (r) => r.net_return_amount, render: (r) => r.net_return_amount.toFixed(2) },
+    { key: 'posted_date', header: 'Posted At', render: (r) => r.posted_date ? new Date(r.posted_date).toLocaleString() : '—' },
+  ];
+
+  const stockDestinationColumns: Column<StockDestinationRow>[] = [
+    { key: 'return_number', header: 'Return #', sortValue: (r) => r.return_number },
+    { key: 'product_name', header: 'Product' },
+    { key: 'destination', header: 'Destination', render: (r) => <span className="capitalize">{r.destination}</span> },
+    { key: 'quantity', header: 'Quantity', sortValue: (r) => r.quantity },
+    { key: 'posted_at', header: 'Posted At', render: (r) => new Date(r.posted_at).toLocaleString() },
+  ];
+
+  const creditNoteColumns: Column<CreditNoteRow>[] = [
+    { key: 'credit_note_number', header: 'Credit Note #', sortValue: (r) => r.credit_note_number },
+    { key: 'return_number', header: 'Return #' },
+    { key: 'customer_name', header: 'Customer' },
+    { key: 'approved_credit_amount', header: 'Amount', sortValue: (r) => r.approved_credit_amount, render: (r) => r.approved_credit_amount.toFixed(2) },
+    { key: 'status', header: 'Status', render: (r) => r.status.replace(/_/g, ' ') },
+    { key: 'created_at', header: 'Created', render: (r) => new Date(r.created_at).toLocaleString() },
+  ];
+
+  const replacementOrderColumns: Column<ReplacementOrderRow>[] = [
+    { key: 'return_number', header: 'Return #' },
+    { key: 'customer_name', header: 'Customer' },
+    { key: 'status', header: 'Status', render: (r) => r.status.replace(/_/g, ' ') },
+    { key: 'value_rule', header: 'Value Rule', render: (r) => r.value_rule.replace(/_/g, ' ') },
+    { key: 'created_at', header: 'Created', render: (r) => new Date(r.created_at).toLocaleString() },
   ];
 
   return (
@@ -92,6 +133,22 @@ export function ReturnReportsPage() {
         <DataTable columns={registerColumns} rows={expired} rowKey={(r) => r.return_number} loading={loading}
           searchPlaceholder="Search…" exportFilename="expired_return_draft_report" />
       )}
+      {report === 'posted' && (
+        <DataTable columns={postedColumns} rows={posted} rowKey={(r) => r.return_number} loading={loading}
+          searchPlaceholder="Search posted returns…" exportFilename="posted_sales_return_register" />
+      )}
+      {report === 'stock_destination' && (
+        <DataTable columns={stockDestinationColumns} rows={stockDestinations} rowKey={(r) => `${r.return_number}-${r.product_name}-${r.posted_at}`} loading={loading}
+          searchPlaceholder="Search…" exportFilename="return_stock_destination_report" />
+      )}
+      {report === 'credit_notes' && (
+        <DataTable columns={creditNoteColumns} rows={creditNotes} rowKey={(r) => r.credit_note_number} loading={loading}
+          searchPlaceholder="Search credit notes…" exportFilename="return_credit_note_report" />
+      )}
+      {report === 'replacement_orders' && (
+        <DataTable columns={replacementOrderColumns} rows={replacementOrders} rowKey={(r) => `${r.return_number}-${r.created_at}`} loading={loading}
+          searchPlaceholder="Search…" exportFilename="replacement_order_report" />
+      )}
       {report === 'employee' && (
         <DataTable columns={employeeColumns} rows={byEmployee} rowKey={(r) => r.employee_name} loading={loading}
           searchPlaceholder="Search employees…" exportFilename="employee_return_draft_report" />
@@ -103,8 +160,8 @@ export function ReturnReportsPage() {
 
       <p className="text-xs text-slate-400">
         Not yet built: Partial Return Draft, Full Invoice Return Draft, Good Stock Return Draft, Wrong Item Return,
-        Return Reason, Return Condition, Batch Return Draft, Serial Return Draft, Replacement Request, Return
-        Period Exception, Duplicate Return Warning, Route Return Draft, and Offline Return Draft reports.
+        Return Reason, Return Condition, Batch Return, Serial Return, Cash Refund Request, Return Approval, Return
+        Inspection, Route Return Draft, and Offline Return reports.
       </p>
     </div>
   );
