@@ -543,6 +543,71 @@ discount/tax/direct amount) against the actual invoiced figures.
   `resolve_adjustment_sync_conflict()` RPC exists and is callable;
   no screen surfaces open conflicts for these three document types).
 
+## Phase 5B.4 Part 1: Credit Notes, Debit Notes, Customer Adjustment Entry
+
+8 migrations, ~1,608 lines, plus a full working client layer (9 pages
+across 3 document types).
+
+**Reused, not duplicated**: `customer_ledger_transactions` already had
+`'credit_note'`/`'debit_note'` transaction types (4A.2 Part 2) —
+untouched this phase since Part 1 is draft-only, ready for Part 2 to
+use directly. This module coexists with (does not replace)
+`sales_return_credit_notes` (5B.3 Part 2), which is auto-generated
+during return posting — a user can manually create a credit note
+(optionally referencing a return/invoice) independently. "Branch"
+reuses `warehouses`, same as every other document header in this
+build. `invoice_eligible_for_adjustment()` reuses the exact eligibility
+rule established for Sales Returns, generalized since it isn't
+return-specific.
+
+**Database**: `financial_document_types` (15 named sub-types,
+categorized by `credit_note`/`debit_note`/`customer_adjustment`),
+`financial_adjustment_reasons` (16 reasons). Shared polymorphic tables
+— `adjustment_status_history`/`adjustment_notes`/`adjustment_sync_status`/
+`adjustment_sync_conflicts` — keyed by `(document_table, document_id)`
+rather than three duplicated copies per document type, matching the
+doc's own singular naming. Core `credit_notes`/`credit_note_items`,
+`debit_notes`/`debit_note_items` (customer-level, invoice optional) and
+`customer_adjustments`/`customer_adjustment_items` (always
+invoice-anchored — the generic price/quantity/discount/tax/promotion
+correction document). All three atomic draft-creation functions
+support both amount-only entry and item-based entry with correction
+pairs, computing line amounts from whichever pair or direct amount was
+supplied — customer-adjustment corrections are validated against the
+actual invoice item's stored figures rather than accepted blind, and
+the credit/debit sign convention was verified consistent across all
+four correction types (price/quantity/discount/tax). Draft editing
+(customer/invoice change clears items), cancellation,
+delete-unsynced-draft, offline sync integration (reusing the shared
+polymorphic tables), 11-action permission module, audit triggers, and
+dashboard/notifications (full prior 115-widget set preserved and
+verified before 6 new grouped ones were appended).
+
+**Client**: found and reused the existing `/accounting` module
+(`AccountingHomePage`) as the natural home for this phase rather than
+creating a new top-level nav section. Credit Notes, Debit Notes, and
+Customer Adjustments each get a list page (search/filter/submit/cancel),
+an entry page, and an 8-tab detail page
+(Overview/Items/Customer/Invoice/References/Notes/Sync History/Audit
+History). Credit/debit note entry supports both amount-only and
+per-invoice-item correction entry; customer adjustment entry is always
+invoice-anchored with a per-item correction picker that adapts its
+input (price/quantity/discount/tax) to the selected adjustment type.
+
+**Honest gaps**:
+- No Reports UI (Credit Note Draft Register, Debit Note Draft
+  Register, Customer Adjustment Register, Price/Quantity/Discount/
+  Promotion/Tax Adjustment Reports, Employee/Van Adjustment Reports) —
+  same category of gap other phases in this build closed in a
+  follow-up pass.
+- No offline sync conflict-resolution UI for this module specifically
+  (the `resolve_adjustment_sync_conflict()` RPC exists and works; no
+  dedicated page surfaces open conflicts yet, mirroring the same gap
+  pattern seen in earlier phases before their follow-up passes).
+- No dashboard widget display — the `dashboard_stats()` values exist
+  and are queryable, but no dashboard card renders them yet for this
+  module specifically.
+
 ## Phase 5B.3 Part 2: Return Approval, Quality Inspection, Return Stock Posting, Customer Balance Adjustment, Credit Note Generation, Replacement Workflow, Return Printing, Offline Revalidation, Reversals
 
 9 migrations, ~2,109 lines, plus a working client layer. This phase
