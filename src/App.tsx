@@ -119,6 +119,8 @@ import { DebitNoteDetailPage } from '@/pages/Accounting/DebitNoteDetailPage';
 import { CustomerAdjustmentsListPage } from '@/pages/Accounting/CustomerAdjustmentsListPage';
 import { CustomerAdjustmentEntryPage } from '@/pages/Accounting/CustomerAdjustmentEntryPage';
 import { CustomerAdjustmentDetailPage } from '@/pages/Accounting/CustomerAdjustmentDetailPage';
+import { AdjustmentReportsPage } from '@/pages/Accounting/AdjustmentReportsPage';
+import { AdjustmentSyncConflictsPage } from '@/pages/Accounting/AdjustmentSyncConflictsPage';
 import { PLSummaryPage } from '@/pages/Accounting/PLSummaryPage';
 import { ExpensesPage } from '@/pages/Accounting/ExpensesPage';
 import { CompanySettingsPage } from '@/pages/Settings/CompanySettingsPage';
@@ -263,6 +265,8 @@ export default function App() {
               <Route path="customer-adjustments" element={<CustomerAdjustmentsListPage />} />
               <Route path="customer-adjustments/new" element={<CustomerAdjustmentEntryPage />} />
               <Route path="customer-adjustments/:id" element={<CustomerAdjustmentDetailPage />} />
+              <Route path="adjustment-reports" element={<AdjustmentReportsPage />} />
+              <Route path="adjustment-sync-conflicts" element={<AdjustmentSyncConflictsPage />} />
             </Route>
 
             {/* Phase 7+ modules — routed so navigation never 404s, built out next */}

@@ -7,6 +7,8 @@ const TABS = [
   { to: '/accounting/credit-notes', label: 'Credit Notes', end: false },
   { to: '/accounting/debit-notes', label: 'Debit Notes', end: false },
   { to: '/accounting/customer-adjustments', label: 'Customer Adjustments', end: false },
+  { to: '/accounting/adjustment-reports', label: 'Adjustment Reports', end: false },
+  { to: '/accounting/adjustment-sync-conflicts', label: 'Sync Conflicts', end: false },
 ];
 
 export function AccountingHomePage() {

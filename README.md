@@ -594,19 +594,19 @@ per-invoice-item correction entry; customer adjustment entry is always
 invoice-anchored with a per-item correction picker that adapts its
 input (price/quantity/discount/tax) to the selected adjustment type.
 
-**Honest gaps**:
-- No Reports UI (Credit Note Draft Register, Debit Note Draft
-  Register, Customer Adjustment Register, Price/Quantity/Discount/
-  Promotion/Tax Adjustment Reports, Employee/Van Adjustment Reports) —
-  same category of gap other phases in this build closed in a
-  follow-up pass.
-- No offline sync conflict-resolution UI for this module specifically
-  (the `resolve_adjustment_sync_conflict()` RPC exists and works; no
-  dedicated page surfaces open conflicts yet, mirroring the same gap
-  pattern seen in earlier phases before their follow-up passes).
-- No dashboard widget display — the `dashboard_stats()` values exist
-  and are queryable, but no dashboard card renders them yet for this
-  module specifically.
+**Follow-up pass** (same day): added `AdjustmentReportsPage` (10 real
+reports: Credit Note/Debit Note/Customer Adjustment Draft Registers,
+Price/Quantity/Discount/Promotion/Tax Adjustment Reports,
+Employee/Van Adjustment Reports), `AdjustmentSyncConflictsPage`
+(company-wide open-conflict queue across all three document types,
+reusing the shared `adjustment_sync_conflicts` table), and a
+"Financial Adjustments" section on the main Dashboard (today's credit
+notes/debit notes/adjustments, pending drafts, sync failures) —
+following the exact `KpiCard`/`SectionTitle` pattern already used
+throughout that page.
+
+Every gap noted for this phase is now closed with working
+functionality.
 
 ## Phase 5B.3 Part 2: Return Approval, Quality Inspection, Return Stock Posting, Customer Balance Adjustment, Credit Note Generation, Replacement Workflow, Return Printing, Offline Revalidation, Reversals
 

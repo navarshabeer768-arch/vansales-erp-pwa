@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   DollarSign, Calendar, CalendarRange, Wallet, HandCoins, AlertTriangle,
   Warehouse, Truck, PackageX, Clock, Undo2, ClipboardCheck, Radar,
-  MapPin, TrendingUp, TrendingDown,
+  MapPin, TrendingUp, TrendingDown, FileMinus, FilePlus, Scale,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -149,6 +149,17 @@ export function DashboardPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <KpiCard icon={Undo2} label="Returns this month" value={loading ? '—' : s?.returns_this_month ?? 0} accent="bg-rose-100 text-rose-700" href="/returns" />
           <KpiCard icon={AlertTriangle} label="Damaged items this month" value={loading ? '—' : s?.damages_this_month ?? 0} accent="bg-rose-100 text-rose-700" href="/van-unloading" />
+        </div>
+      </div>
+
+      <div>
+        <SectionTitle>Financial Adjustments {(((s as any)?.adjustment_pending_drafts ?? 0) + ((s as any)?.adjustment_sync_failures ?? 0)) > 0 && <span className="ml-1 text-red-600">({((s as any)?.adjustment_pending_drafts ?? 0) + ((s as any)?.adjustment_sync_failures ?? 0)})</span>}</SectionTitle>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+          <KpiCard icon={FileMinus} label="Credit notes today" value={loading ? '—' : (s as any)?.credit_notes_today ?? 0} accent="bg-emerald-100 text-emerald-700" href="/accounting/credit-notes" />
+          <KpiCard icon={FilePlus} label="Debit notes today" value={loading ? '—' : (s as any)?.debit_notes_today ?? 0} accent="bg-orange-100 text-orange-700" href="/accounting/debit-notes" />
+          <KpiCard icon={Scale} label="Adjustments today" value={loading ? '—' : (s as any)?.customer_adjustments_today ?? 0} accent="bg-sky-100 text-sky-700" href="/accounting/customer-adjustments" />
+          <KpiCard icon={ClipboardCheck} label="Pending drafts" value={loading ? '—' : (s as any)?.adjustment_pending_drafts ?? 0} accent="bg-amber-100 text-amber-700" href="/accounting/credit-notes" />
+          <KpiCard icon={AlertTriangle} label="Sync failures" value={loading ? '—' : (s as any)?.adjustment_sync_failures ?? 0} accent="bg-rose-100 text-rose-700" href="/accounting/adjustment-sync-conflicts" />
         </div>
       </div>
 
