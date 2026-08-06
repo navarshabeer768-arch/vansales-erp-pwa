@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0112). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0117). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -484,64 +484,81 @@ display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
 
-## Phase 5B.4 Part 1: Credit Notes, Debit Notes, Customer Adjustment Entry
+## Phase 5B.4 Part 2: Approvals, Posting, Customer Ledger Adjustments, Credit Allocation, Reversals, Printing
 
-12 migrations, ~2,190 lines, plus a working client layer. This is a
-new, general-purpose manual financial-adjustment module — draft only,
-mirroring the exact Part 1/Part 2 split established for Sales Returns
-(approval/posting/balance-adjustment for these documents belongs to a
-future 5B.4 Part 2).
+5 migrations, ~1,615 lines, plus a working client layer. Turns Part
+1's draft-only credit notes/debit notes/customer adjustments into
+real, posted financial transactions.
 
-**Reused, not duplicated**: `customer_ledger_transactions` already had
-`'credit_note'`/`'debit_note'` transaction types (4A.2 Part 2) —
-reserved for Part 2's posting, not needed for this draft-only phase.
-`sales_return_credit_notes` (5B.3 Part 2, auto-generated during return
-posting) is untouched and continues working exactly as before —
-this phase's `credit_notes` is a separate, general-purpose table a
-user can create manually (optionally referencing a return/invoice),
-coexisting rather than replacing it. `invoice_eligible_for_adjustment()`
-generalizes the eligibility rule already established for Sales Returns.
-"Branch" reuses `warehouses`, same as every other document header in
-this build. The already-existing `AccountingHomePage`/`/accounting`
-route (found during inspection, not created) is this module's home.
+**Reused, not duplicated**: `customer_ledger_transactions`' existing
+`'credit_note'`/`'debit_note'` types (4A.2 Part 2) — used directly for
+posting. `sales_invoices.credited_amount` (5B.3 Part 2) — reused for
+invoice adjustment, never touching the invoice's own recorded amounts.
+`customer_unallocated_credits`/`customer_unallocated_allocations` (5B.2
+Part 2, receipts) — extended with a nullable `credit_note_id` so
+credit-note-sourced unallocated credit reuses the exact same
+tracking/allocation table receipts already use, rather than a parallel
+one; `allocate_credit_note_unallocated_credit()` is a thin permission
+wrapper around the same underlying `revalidate_invoice_allocation()`.
+The approval/reversal workflow shape mirrors Sales Returns Part 2
+(5B.3), made polymorphic across all three document types via
+`(document_table, document_id)` — the same pattern Part 1 used for its
+shared tables.
 
-**Database**: `financial_document_types` (15 named sub-types,
-categorized by `credit_note`/`debit_note`/`customer_adjustment`),
-`financial_adjustment_reasons` (16 reasons). Shared polymorphic
-`adjustment_status_history`/`adjustment_notes`/`adjustment_sync_status`/
-`adjustment_sync_conflicts` tables keyed by `(document_table,
-document_id)` — matching the doc's own singular naming rather than
-building three duplicated copies. Core `credit_notes`/`credit_note_items`,
-`debit_notes`/`debit_note_items` (customer-level, invoice optional,
-support amount-only entry), and `customer_adjustments`/
-`customer_adjustment_items` (always invoice-anchored, no amount-only
-mode) — every atomic draft-creation function computes line amounts from
-whichever correction pair (price/quantity/discount/tax) or direct
-amount was supplied, verified for a consistent credit/debit sign
-convention across all four correction types. Customer adjustment
-corrections are validated against the actual invoice item's stored
-figures, not accepted blind. Draft editing (customer/invoice change
-clears items), cancellation, delete-unsynced, offline sync integration,
-24-action permission module, audit triggers, dashboard widgets (full
-prior 115-widget set preserved and appended to) and notifications for
-all three document types.
+**Database**: status model extended to the full Part 2 set on all
+three document tables, plus genuinely-missing `approval_status`/
+`posting_status`/`final_number_generated_*` columns. Polymorphic
+approval workflow with real trigger evaluation. **Posting engine** (the
+centerpiece): `post_credit_note()`, `post_debit_note()`,
+`post_customer_adjustment()` — atomic, creating real ledger entries,
+updating `customers.outstanding_balance`, reducing invoice
+`credited_amount` up to what's actually outstanding, and creating an
+unallocated-credit record for any leftover. Debit notes simply increase
+the balance (no unallocated-credit concept — there's nothing to
+allocate). Credit allocation, debit linking (`debit_note_invoice_links`,
+a lightweight traceability record since a posted debit note already
+fully increased the balance at posting time), cancellation guarded
+against posted documents, and atomic reversal that restores invoice
+credited amounts and customer balances by reading the exact original
+split from `credit_note_postings`/the extended
+`customer_adjustment_posting_history` rather than recomputing. Offline
+revalidation, printing, permissions, audit, dashboard (full prior
+121-widget set preserved and appended to), and notifications.
 
-**Client**: list/entry/detail pages for all three document types, each
-detail page with the doc's specified 8 tabs (Overview/Items/Customer/
-Invoice/References/Notes/Sync History/Audit History). Credit and debit
-note entry support both amount-only and per-invoice-item entry; customer
-adjustment entry has a per-line correction-type picker (price/quantity/
-discount/tax/direct amount) against the actual invoiced figures.
+**Three real bugs caught and fixed before shipping**: (1) invalid
+PL/pgSQL syntax using `execute` inside a subquery for dynamic function
+dispatch during posting retry — fixed with explicit typed branches; (2)
+a type mismatch that would have selected a text column (`net_direction`)
+into a uuid variable during customer-adjustment reversal, which also
+exposed a missing posting-effect tracking table — fixed by extending
+`customer_adjustment_posting_history` with the same credited/unallocated
+columns `credit_note_postings` has; (3) a genuinely pre-existing bug —
+`print_logs.document_type`'s original CHECK constraint never actually
+allowed the values Sales Returns (5B.3 Part 2) and Receipts (5B.2 Part
+2) have been inserting since those phases shipped (`'sales_return'`,
+`'receipt'`), which would have failed against a live database. Extended
+the constraint with those two plus this phase's three new document
+types rather than perpetuating the gap into a fourth module.
+
+**Client**: each of the three detail pages gets three new tabs
+(Approval/Posting History/Reversal) and Submit-for-Approval/Post/Retry/
+Request-Reversal header buttons. A company-wide `AdjustmentReversalQueuePage`
+(mirrors the reversal-queue pattern used in Sales Returns and Receipts)
+and a `CreditNoteUnallocatedCreditPage` for allocating credit-note-
+sourced leftover credit against any of a customer's outstanding
+invoices.
 
 **Honest gaps**:
-- No Reports UI (Credit Note Draft Register, Debit Note Draft Register,
-  Customer Adjustment Register, and the 7 other named reports) — same
-  gap every other Part 1 phase in this build has had at this stage
-  before its follow-up pass.
-- No mobile/PDT-specific touch optimizations on the entry pages yet.
-- No dedicated offline sync-conflict resolution UI (the shared
-  `resolve_adjustment_sync_conflict()` RPC exists and is callable;
-  no screen surfaces open conflicts for these three document types).
+- No print modal for these three document types yet (the backend
+  printing infrastructure — `record_adjustment_print()`,
+  `customer_adjustment_print_history` — is fully built and callable;
+  no UI renders it, same gap other phases in this build closed in a
+  follow-up pass).
+- No Reports UI update for posted-document data (the existing
+  `AdjustmentReportsPage` from Part 1 covers drafts only).
+- No dashboard widget display for the new Part 2 KPIs (the
+  `dashboard_stats()` values exist and are queryable; no dashboard
+  card renders them yet).
 
 ## Phase 5B.4 Part 1: Credit Notes, Debit Notes, Customer Adjustment Entry
 

@@ -9,6 +9,8 @@ const TABS = [
   { to: '/accounting/customer-adjustments', label: 'Customer Adjustments', end: false },
   { to: '/accounting/adjustment-reports', label: 'Adjustment Reports', end: false },
   { to: '/accounting/adjustment-sync-conflicts', label: 'Sync Conflicts', end: false },
+  { to: '/accounting/adjustment-reversal-requests', label: 'Reversal Requests', end: false },
+  { to: '/accounting/credit-note-unallocated', label: 'Credit Allocation', end: false },
 ];
 
 export function AccountingHomePage() {

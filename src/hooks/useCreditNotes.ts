@@ -2,7 +2,33 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
-export type AdjustmentStatus = 'draft' | 'pending_validation' | 'submitted' | 'returned' | 'cancelled' | 'sync_pending' | 'sync_failed' | 'conflict';
+export const ADJUSTMENT_STATUS_STYLES: Record<AdjustmentStatus, string> = {
+  draft: 'bg-slate-100 text-slate-600 dark:bg-slate-800',
+  pending_validation: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
+  pending_approval: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
+  approved: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30',
+  returned_for_correction: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  on_hold: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30',
+  ready_to_post: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30',
+  posting: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30',
+  posted: 'bg-emerald-200 text-emerald-800 dark:bg-emerald-900/50',
+  posting_failed: 'bg-red-100 text-red-700 dark:bg-red-900/30',
+  cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30',
+  reversal_requested: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
+  reversed: 'bg-slate-200 text-slate-500 dark:bg-slate-700',
+  sync_pending: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
+  sync_failed: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
+  conflict: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
+  pending_submission: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30',
+  submitted: 'bg-green-100 text-green-700 dark:bg-green-900/30',
+  returned: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  expired: 'bg-slate-200 text-slate-500 dark:bg-slate-700',
+};
+
+export type AdjustmentStatus =
+  | 'draft' | 'pending_validation' | 'pending_approval' | 'approved' | 'returned_for_correction' | 'on_hold'
+  | 'ready_to_post' | 'posting' | 'posted' | 'posting_failed' | 'cancelled' | 'reversal_requested' | 'reversed'
+  | 'sync_pending' | 'sync_failed' | 'conflict' | 'pending_submission' | 'submitted' | 'returned' | 'expired';
 
 export interface CreditNoteRow {
   id: string; document_number: string; document_date: string; status: AdjustmentStatus;

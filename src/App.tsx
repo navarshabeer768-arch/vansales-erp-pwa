@@ -121,6 +121,8 @@ import { CustomerAdjustmentEntryPage } from '@/pages/Accounting/CustomerAdjustme
 import { CustomerAdjustmentDetailPage } from '@/pages/Accounting/CustomerAdjustmentDetailPage';
 import { AdjustmentReportsPage } from '@/pages/Accounting/AdjustmentReportsPage';
 import { AdjustmentSyncConflictsPage } from '@/pages/Accounting/AdjustmentSyncConflictsPage';
+import { AdjustmentReversalQueuePage } from '@/pages/Accounting/AdjustmentReversalQueuePage';
+import { CreditNoteUnallocatedCreditPage } from '@/pages/Accounting/CreditNoteUnallocatedCreditPage';
 import { PLSummaryPage } from '@/pages/Accounting/PLSummaryPage';
 import { ExpensesPage } from '@/pages/Accounting/ExpensesPage';
 import { CompanySettingsPage } from '@/pages/Settings/CompanySettingsPage';
@@ -267,6 +269,8 @@ export default function App() {
               <Route path="customer-adjustments/:id" element={<CustomerAdjustmentDetailPage />} />
               <Route path="adjustment-reports" element={<AdjustmentReportsPage />} />
               <Route path="adjustment-sync-conflicts" element={<AdjustmentSyncConflictsPage />} />
+              <Route path="adjustment-reversal-requests" element={<AdjustmentReversalQueuePage />} />
+              <Route path="credit-note-unallocated" element={<CreditNoteUnallocatedCreditPage />} />
             </Route>
 
             {/* Phase 7+ modules — routed so navigation never 404s, built out next */}

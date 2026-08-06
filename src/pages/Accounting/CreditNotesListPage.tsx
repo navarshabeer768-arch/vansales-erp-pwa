@@ -1,23 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, FileMinus } from 'lucide-react';
-import { useCreditNotes } from '@/hooks/useCreditNotes';
+import { useCreditNotes, ADJUSTMENT_STATUS_STYLES as STATUS_STYLES } from '@/hooks/useCreditNotes';
 import type { CreditNoteRow, AdjustmentStatus } from '@/hooks/useCreditNotes';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useToast } from '@/contexts/ToastContext';
-
-const STATUS_STYLES: Record<AdjustmentStatus, string> = {
-  draft: 'bg-slate-100 text-slate-600 dark:bg-slate-800',
-  pending_validation: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
-  submitted: 'bg-green-100 text-green-700 dark:bg-green-900/30',
-  returned: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
-  cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30',
-  sync_pending: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
-  sync_failed: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
-  conflict: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
-};
-
 export function CreditNotesListPage() {
   const navigate = useNavigate();
   const [dateFrom, setDateFrom] = useState(new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
@@ -98,7 +86,7 @@ export function CreditNotesListPage() {
           <label className="label">Status</label>
           <select className="input" value={status} onChange={(e) => setStatus(e.target.value as AdjustmentStatus | '')}>
             <option value="">All</option>
-            {(['draft', 'submitted', 'returned', 'cancelled', 'sync_pending', 'sync_failed', 'conflict'] as AdjustmentStatus[]).map((s) => (
+            {(['draft', 'pending_approval', 'approved', 'ready_to_post', 'posted', 'on_hold', 'reversal_requested', 'reversed', 'submitted', 'returned', 'cancelled', 'sync_pending', 'sync_failed', 'conflict'] as AdjustmentStatus[]).map((s) => (
               <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
             ))}
           </select>
