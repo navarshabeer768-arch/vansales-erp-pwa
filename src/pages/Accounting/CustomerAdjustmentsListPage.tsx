@@ -1,0 +1,126 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, SlidersHorizontal } from 'lucide-react';
+import { useCustomerAdjustments } from '@/hooks/useCustomerAdjustments';
+import type { CustomerAdjustmentRow } from '@/hooks/useCustomerAdjustments';
+import type { AdjustmentStatus } from '@/hooks/useCreditNotes';
+import { DataTable, Column } from '@/components/ui/DataTable';
+import { PermissionGate } from '@/components/common/PermissionGate';
+import { useToast } from '@/contexts/ToastContext';
+
+const STATUS_STYLES: Record<AdjustmentStatus, string> = {
+  draft: 'bg-slate-100 text-slate-600 dark:bg-slate-800',
+  pending_validation: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
+  submitted: 'bg-green-100 text-green-700 dark:bg-green-900/30',
+  returned: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30',
+  cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30',
+  sync_pending: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30',
+  sync_failed: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
+  conflict: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30',
+};
+
+export function CustomerAdjustmentsListPage() {
+  const navigate = useNavigate();
+  const [dateFrom, setDateFrom] = useState(new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
+  const [dateTo, setDateTo] = useState(new Date().toISOString().slice(0, 10));
+  const [status, setStatus] = useState<AdjustmentStatus | ''>('');
+  const { push } = useToast();
+  const { adjustments, loading, submitDraft, cancelDraft } = useCustomerAdjustments({ dateFrom, dateTo, status: status || undefined });
+
+  const handleCancel = async (id: string) => {
+    const reason = prompt('Reason for cancelling this draft:');
+    if (!reason) return;
+    const { error } = await cancelDraft(id, reason);
+    if (error) push('error', error); else push('success', 'Draft cancelled.');
+  };
+
+  const columns: Column<CustomerAdjustmentRow>[] = [
+    {
+      key: 'document_number', header: 'Number', sortValue: (r) => r.document_number,
+      render: (r) => (
+        <button className="font-medium text-blue-600 hover:underline dark:text-blue-400" onClick={() => navigate(`/accounting/customer-adjustments/${r.id}`)}>
+          {r.document_number}
+        </button>
+      ),
+    },
+    { key: 'document_date', header: 'Date', sortValue: (r) => r.document_date },
+    { key: 'customer', header: 'Customer', render: (r) => r.customer ? `${r.customer.customer_code} — ${r.customer.business_name}` : '—' },
+    { key: 'document_type', header: 'Type', render: (r) => r.document_type?.label ?? '—' },
+    {
+      key: 'net_amount', header: 'Net Amount', sortValue: (r) => r.net_amount,
+      render: (r) => <span className={r.net_direction === 'credit' ? 'text-green-600' : 'text-red-600'}>{r.net_direction === 'debit' ? '+' : '-'}{r.net_amount.toFixed(2)}</span>,
+    },
+    {
+      key: 'status', header: 'Status',
+      render: (r) => <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${STATUS_STYLES[r.status]}`}>{r.status.replace(/_/g, ' ')}</span>,
+    },
+    {
+      key: 'actions', header: '', className: 'text-right',
+      render: (r) => (
+        <div className="flex justify-end gap-2 text-xs">
+          {r.status === 'draft' && (
+            <PermissionGate permission="financial_adjustments:create_adjustment">
+              <button className="text-green-600 hover:underline" onClick={() => submitDraft(r.id)}>Submit</button>
+            </PermissionGate>
+          )}
+          {r.status !== 'cancelled' && (
+            <PermissionGate permission="financial_adjustments:cancel_draft">
+              <button className="text-red-600 hover:underline" onClick={() => handleCancel(r.id)}>Cancel</button>
+            </PermissionGate>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-xl font-bold text-slate-800 dark:text-slate-100">
+            <SlidersHorizontal size={20} /> Customer Adjustments
+          </h1>
+          <p className="text-sm text-slate-500">Draft price, quantity, discount, tax, and promotion corrections — always tied to a specific invoice.</p>
+        </div>
+        <PermissionGate permission="financial_adjustments:create_adjustment">
+          <button className="btn-primary" onClick={() => navigate('/accounting/customer-adjustments/new')}>
+            <Plus size={16} /> New Adjustment
+          </button>
+        </PermissionGate>
+      </div>
+
+      <div className="card flex flex-wrap items-end gap-3 p-4">
+        <div>
+          <label className="label">From</label>
+          <input type="date" className="input" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">To</label>
+          <input type="date" className="input" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Status</label>
+          <select className="input" value={status} onChange={(e) => setStatus(e.target.value as AdjustmentStatus | '')}>
+            <option value="">All</option>
+            {(['draft', 'submitted', 'returned', 'cancelled', 'sync_pending', 'sync_failed', 'conflict'] as AdjustmentStatus[]).map((s) => (
+              <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <DataTable
+        columns={columns}
+        rows={adjustments}
+        rowKey={(r) => r.id}
+        loading={loading}
+        searchPlaceholder="Search number, customer…"
+        searchFn={(r, q) => {
+          const query = q.toLowerCase();
+          return r.document_number.toLowerCase().includes(query) || (r.customer?.business_name.toLowerCase().includes(query) ?? false);
+        }}
+        exportFilename="customer_adjustments"
+      />
+    </div>
+  );
+}

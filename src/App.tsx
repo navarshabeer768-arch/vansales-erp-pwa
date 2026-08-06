@@ -110,6 +110,15 @@ import { PurchasesHomePage } from '@/pages/Purchases/PurchasesHomePage';
 import { PurchaseOrdersPage } from '@/pages/Purchases/PurchaseOrdersPage';
 import { GoodsReceiptsPage } from '@/pages/Purchases/GoodsReceiptsPage';
 import { AccountingHomePage } from '@/pages/Accounting/AccountingHomePage';
+import { CreditNotesListPage } from '@/pages/Accounting/CreditNotesListPage';
+import { CreditNoteEntryPage } from '@/pages/Accounting/CreditNoteEntryPage';
+import { CreditNoteDetailPage } from '@/pages/Accounting/CreditNoteDetailPage';
+import { DebitNotesListPage } from '@/pages/Accounting/DebitNotesListPage';
+import { DebitNoteEntryPage } from '@/pages/Accounting/DebitNoteEntryPage';
+import { DebitNoteDetailPage } from '@/pages/Accounting/DebitNoteDetailPage';
+import { CustomerAdjustmentsListPage } from '@/pages/Accounting/CustomerAdjustmentsListPage';
+import { CustomerAdjustmentEntryPage } from '@/pages/Accounting/CustomerAdjustmentEntryPage';
+import { CustomerAdjustmentDetailPage } from '@/pages/Accounting/CustomerAdjustmentDetailPage';
 import { PLSummaryPage } from '@/pages/Accounting/PLSummaryPage';
 import { ExpensesPage } from '@/pages/Accounting/ExpensesPage';
 import { CompanySettingsPage } from '@/pages/Settings/CompanySettingsPage';
@@ -245,6 +254,15 @@ export default function App() {
             <Route path="accounting" element={<AccountingHomePage />}>
               <Route index element={<PLSummaryPage />} />
               <Route path="expenses" element={<ExpensesPage />} />
+              <Route path="credit-notes" element={<CreditNotesListPage />} />
+              <Route path="credit-notes/new" element={<CreditNoteEntryPage />} />
+              <Route path="credit-notes/:id" element={<CreditNoteDetailPage />} />
+              <Route path="debit-notes" element={<DebitNotesListPage />} />
+              <Route path="debit-notes/new" element={<DebitNoteEntryPage />} />
+              <Route path="debit-notes/:id" element={<DebitNoteDetailPage />} />
+              <Route path="customer-adjustments" element={<CustomerAdjustmentsListPage />} />
+              <Route path="customer-adjustments/new" element={<CustomerAdjustmentEntryPage />} />
+              <Route path="customer-adjustments/:id" element={<CustomerAdjustmentDetailPage />} />
             </Route>
 
             {/* Phase 7+ modules — routed so navigation never 404s, built out next */}

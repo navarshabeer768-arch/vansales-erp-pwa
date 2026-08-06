@@ -321,7 +321,7 @@ supabase db push
 ```
 
 Or paste each file in `supabase/migrations/` into the Supabase SQL editor,
-**in numeric order** (0001 → 0104). Each file is idempotent-safe to rerun
+**in numeric order** (0001 → 0112). Each file is idempotent-safe to rerun
 individually but the whole set must run in order once.
 
 **Required:** in Supabase → Authentication → Providers → Email, turn
@@ -483,6 +483,65 @@ access** — restricting a person to specific warehouses beyond just
 display — isn't enforced anywhere; `home_warehouse_id` is informational
 only right now. Worth a dedicated pass if you need staff genuinely
 walled off from other branches' data, not just their own.
+
+## Phase 5B.4 Part 1: Credit Notes, Debit Notes, Customer Adjustment Entry
+
+12 migrations, ~2,190 lines, plus a working client layer. This is a
+new, general-purpose manual financial-adjustment module — draft only,
+mirroring the exact Part 1/Part 2 split established for Sales Returns
+(approval/posting/balance-adjustment for these documents belongs to a
+future 5B.4 Part 2).
+
+**Reused, not duplicated**: `customer_ledger_transactions` already had
+`'credit_note'`/`'debit_note'` transaction types (4A.2 Part 2) —
+reserved for Part 2's posting, not needed for this draft-only phase.
+`sales_return_credit_notes` (5B.3 Part 2, auto-generated during return
+posting) is untouched and continues working exactly as before —
+this phase's `credit_notes` is a separate, general-purpose table a
+user can create manually (optionally referencing a return/invoice),
+coexisting rather than replacing it. `invoice_eligible_for_adjustment()`
+generalizes the eligibility rule already established for Sales Returns.
+"Branch" reuses `warehouses`, same as every other document header in
+this build. The already-existing `AccountingHomePage`/`/accounting`
+route (found during inspection, not created) is this module's home.
+
+**Database**: `financial_document_types` (15 named sub-types,
+categorized by `credit_note`/`debit_note`/`customer_adjustment`),
+`financial_adjustment_reasons` (16 reasons). Shared polymorphic
+`adjustment_status_history`/`adjustment_notes`/`adjustment_sync_status`/
+`adjustment_sync_conflicts` tables keyed by `(document_table,
+document_id)` — matching the doc's own singular naming rather than
+building three duplicated copies. Core `credit_notes`/`credit_note_items`,
+`debit_notes`/`debit_note_items` (customer-level, invoice optional,
+support amount-only entry), and `customer_adjustments`/
+`customer_adjustment_items` (always invoice-anchored, no amount-only
+mode) — every atomic draft-creation function computes line amounts from
+whichever correction pair (price/quantity/discount/tax) or direct
+amount was supplied, verified for a consistent credit/debit sign
+convention across all four correction types. Customer adjustment
+corrections are validated against the actual invoice item's stored
+figures, not accepted blind. Draft editing (customer/invoice change
+clears items), cancellation, delete-unsynced, offline sync integration,
+24-action permission module, audit triggers, dashboard widgets (full
+prior 115-widget set preserved and appended to) and notifications for
+all three document types.
+
+**Client**: list/entry/detail pages for all three document types, each
+detail page with the doc's specified 8 tabs (Overview/Items/Customer/
+Invoice/References/Notes/Sync History/Audit History). Credit and debit
+note entry support both amount-only and per-invoice-item entry; customer
+adjustment entry has a per-line correction-type picker (price/quantity/
+discount/tax/direct amount) against the actual invoiced figures.
+
+**Honest gaps**:
+- No Reports UI (Credit Note Draft Register, Debit Note Draft Register,
+  Customer Adjustment Register, and the 7 other named reports) — same
+  gap every other Part 1 phase in this build has had at this stage
+  before its follow-up pass.
+- No mobile/PDT-specific touch optimizations on the entry pages yet.
+- No dedicated offline sync-conflict resolution UI (the shared
+  `resolve_adjustment_sync_conflict()` RPC exists and is callable;
+  no screen surfaces open conflicts for these three document types).
 
 ## Phase 5B.3 Part 2: Return Approval, Quality Inspection, Return Stock Posting, Customer Balance Adjustment, Credit Note Generation, Replacement Workflow, Return Printing, Offline Revalidation, Reversals
 

@@ -4,6 +4,9 @@ import clsx from 'clsx';
 const TABS = [
   { to: '/accounting', label: 'P&L Summary', end: true },
   { to: '/accounting/expenses', label: 'Expenses', end: false },
+  { to: '/accounting/credit-notes', label: 'Credit Notes', end: false },
+  { to: '/accounting/debit-notes', label: 'Debit Notes', end: false },
+  { to: '/accounting/customer-adjustments', label: 'Customer Adjustments', end: false },
 ];
 
 export function AccountingHomePage() {
